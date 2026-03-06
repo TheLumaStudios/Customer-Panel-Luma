@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Bağlantı Testi</h1>
+    <button onclick="testProfile()">Profile Çek</button>
+    <button onclick="testCustomers()">Customers Çek</button>
+    <button onclick="testDomains()">Domains Çek</button>
+    <pre id="result"></pre>
+
+    <script>
+        const { createClient } = supabase
+        const supabaseUrl = 'https://pbgajlkaulxrspyptzzs.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2FqbGthdWx4cnNweXB0enpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzIzNDYsImV4cCI6MjA4ODE0ODM0Nn0.3gOjcLj6G_jhdE_Jf4zZJEPwxmD0p4fGeoO-w-imDtA'
+        const client = createClient(supabaseUrl, supabaseKey)
+
+        async function testProfile() {
+            const userId = 'c54abd29-1f8b-4dd6-bb6c-21efecc47c60'
+            const { data, error } = await client
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle()
+
+            document.getElementById('result').textContent = JSON.stringify({ data, error }, null, 2)
+        }
+
+        async function testCustomers() {
+            const { data, error } = await client
+                .from('customers')
+                .select('*')
+
+            document.getElementById('result').textContent = JSON.stringify({ data, error }, null, 2)
+        }
+
+        async function testDomains() {
+            const { data, error } = await client
+                .from('domains')
+                .select('*')
+
+            document.getElementById('result').textContent = JSON.stringify({ data, error }, null, 2)
+        }
+    </script>
+</body>
+</html>
