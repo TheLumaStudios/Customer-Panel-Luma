@@ -9,8 +9,9 @@ import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key } from 'lucide-reac
 import { formatDate } from '@/lib/utils'
 import CustomerForm from '@/components/customers/CustomerForm'
 import SendSmsModal from '@/components/customers/SendSmsModal'
+import SendPasswordModal from '@/components/customers/SendPasswordModal'
 import { sendSMS } from '@/lib/api/sms'
-import { createCustomerAuth } from '@/lib/api/auth'
+import { prepareCustomerAuth, sendPasswordSMS } from '@/lib/api/auth'
 import { toast } from '@/lib/toast'
 
 export default function Customers() {
@@ -24,6 +25,9 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [smsModalOpen, setSmsModalOpen] = useState(false)
   const [smsCustomer, setSmsCustomer] = useState(null)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [passwordCustomer, setPasswordCustomer] = useState(null)
+  const [passwordData, setPasswordData] = useState(null)
 
   const handleCreate = () => {
     setEditingCustomer(null)
@@ -136,21 +140,34 @@ export default function Customers() {
     }
 
     try {
-      const result = await createCustomerAuth(customer)
+      const result = await prepareCustomerAuth(customer)
+      setPasswordCustomer(customer)
+      setPasswordData(result)
+      setPasswordModalOpen(true)
+    } catch (error) {
+      console.error('Panel şifresi hazırlama hatası:', error)
+      toast.error('Panel şifresi hazırlanamadı', {
+        description: error.message
+      })
+    }
+  }
+
+  const handleConfirmPasswordSend = async () => {
+    try {
+      await sendPasswordSMS(passwordCustomer, passwordData.smsMessage)
 
       toast.success(
-        result.isExisting ? 'Mevcut şifre gönderildi' : 'Yeni şifre oluşturuldu',
+        passwordData.isExisting ? 'Mevcut şifre gönderildi' : 'Yeni şifre gönderildi',
         {
-          description: result.isExisting
-            ? `${customer.phone} numarasına mevcut panel şifresi gönderildi`
-            : `${customer.phone} numarasına yeni şifre gönderildi`
+          description: `${passwordCustomer.phone} numarasına SMS gönderildi`
         }
       )
     } catch (error) {
-      console.error('Panel şifresi gönderme hatası:', error)
-      toast.error('Panel şifresi gönderilemedi', {
+      console.error('SMS gönderme hatası:', error)
+      toast.error('SMS gönderilemedi', {
         description: error.message
       })
+      throw error // Re-throw to prevent modal from closing
     }
   }
 
@@ -335,6 +352,17 @@ export default function Customers() {
         onOpenChange={setSmsModalOpen}
         customer={smsCustomer}
         onSubmit={handleSmsSubmit}
+      />
+
+      <SendPasswordModal
+        open={passwordModalOpen}
+        onOpenChange={setPasswordModalOpen}
+        customer={passwordCustomer}
+        message={passwordData?.smsMessage || ''}
+        password={passwordData?.password || ''}
+        isExisting={passwordData?.isExisting || false}
+        onConfirm={handleConfirmPasswordSend}
+        onCancel={() => setPasswordModalOpen(false)}
       />
     </div>
   )

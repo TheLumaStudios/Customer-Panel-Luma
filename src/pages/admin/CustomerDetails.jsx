@@ -29,13 +29,15 @@ import {
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import CustomerForm from '@/components/customers/CustomerForm'
-import { createCustomerAuth, resetCustomerPassword } from '@/lib/api/auth'
+import SendPasswordModal from '@/components/customers/SendPasswordModal'
+import { prepareCustomerAuth, sendPasswordSMS } from '@/lib/api/auth'
 
 export default function CustomerDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [formOpen, setFormOpen] = useState(false)
-  const [sendingPassword, setSendingPassword] = useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [passwordData, setPasswordData] = useState(null)
   const updateCustomer = useUpdateCustomer()
 
   const { data: customer, isLoading: customerLoading } = useCustomer(id)
@@ -109,29 +111,34 @@ export default function CustomerDetails() {
       return
     }
 
-    if (!confirm(`${customer.full_name} için panel şifresi oluşturulup SMS ile gönderilsin mi?`)) {
-      return
-    }
-
-    setSendingPassword(true)
     try {
-      const result = await createCustomerAuth(customer)
+      const result = await prepareCustomerAuth(customer)
+      setPasswordData(result)
+      setPasswordModalOpen(true)
+    } catch (error) {
+      console.error('Panel şifresi hazırlama hatası:', error)
+      toast.error('Panel şifresi hazırlanamadı', {
+        description: error.message
+      })
+    }
+  }
+
+  const handleConfirmSend = async () => {
+    try {
+      await sendPasswordSMS(customer, passwordData.smsMessage)
 
       toast.success(
-        result.isExisting ? 'Mevcut şifre gönderildi' : 'Yeni şifre oluşturuldu',
+        passwordData.isExisting ? 'Mevcut şifre gönderildi' : 'Yeni şifre gönderildi',
         {
-          description: result.isExisting
-            ? `${customer.phone} numarasına mevcut panel şifresi gönderildi`
-            : `${customer.phone} numarasına yeni şifre gönderildi. Şifre: ${result.password}`
+          description: `${customer.phone} numarasına SMS gönderildi`
         }
       )
     } catch (error) {
-      console.error('Panel şifresi gönderme hatası:', error)
-      toast.error('Panel şifresi gönderilemedi', {
+      console.error('SMS gönderme hatası:', error)
+      toast.error('SMS gönderilemedi', {
         description: error.message
       })
-    } finally {
-      setSendingPassword(false)
+      throw error // Re-throw to prevent modal from closing
     }
   }
 
@@ -214,18 +221,9 @@ export default function CustomerDetails() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSendPassword} disabled={sendingPassword}>
-            {sendingPassword ? (
-              <>
-                <Send className="h-4 w-4 mr-2 animate-pulse" />
-                Gönderiliyor...
-              </>
-            ) : (
-              <>
-                <Key className="h-4 w-4 mr-2" />
-                Panel Şifresi Gönder
-              </>
-            )}
+          <Button variant="outline" onClick={handleSendPassword}>
+            <Key className="h-4 w-4 mr-2" />
+            Panel Şifresi Gönder
           </Button>
           <Button onClick={handleEdit}>
             <Edit className="h-4 w-4 mr-2" />
@@ -617,6 +615,17 @@ export default function CustomerDetails() {
         onOpenChange={setFormOpen}
         customer={customer}
         onSubmit={handleSubmit}
+      />
+
+      <SendPasswordModal
+        open={passwordModalOpen}
+        onOpenChange={setPasswordModalOpen}
+        customer={customer}
+        message={passwordData?.smsMessage || ''}
+        password={passwordData?.password || ''}
+        isExisting={passwordData?.isExisting || false}
+        onConfirm={handleConfirmSend}
+        onCancel={() => setPasswordModalOpen(false)}
       />
     </div>
   )

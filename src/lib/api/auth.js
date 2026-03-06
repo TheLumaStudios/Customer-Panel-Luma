@@ -17,12 +17,11 @@ export const generatePassword = (length = 12) => {
 }
 
 /**
- * Create auth account for customer and send password via SMS
- * Note: This creates a temporary account. Real implementation needs backend endpoint.
+ * Prepare customer auth (get or create password)
  * @param {Object} customer - Customer object with email, phone, full_name
- * @returns {Promise<Object>} Result with password
+ * @returns {Promise<Object>} Password and message preview
  */
-export const createCustomerAuth = async (customer) => {
+export const prepareCustomerAuth = async (customer) => {
   try {
     if (!customer.email) {
       throw new Error('Müşterinin e-posta adresi bulunamadı')
@@ -79,7 +78,7 @@ export const createCustomerAuth = async (customer) => {
       throw new Error(`Database error: ${dbError.response?.data?.message || dbError.message}`)
     }
 
-    // Send password via SMS
+    // Prepare SMS message
     const smsMessage = isExisting
       ? `Merhaba ${customer.full_name},
 
@@ -100,19 +99,38 @@ E-posta: ${customer.email}
 
 İlk girişte şifrenizi değiştirmenizi öneririz.`
 
-    await sendSMS(customer.phone, smsMessage)
-
     return {
       success: true,
       password: password,
       isExisting: isExisting,
+      smsMessage: smsMessage,
       message: isExisting
-        ? 'Mevcut panel şifresi SMS ile gönderildi'
-        : 'Panel şifresi oluşturuldu ve SMS ile gönderildi'
+        ? 'Mevcut panel şifresi hazırlandı'
+        : 'Panel şifresi oluşturuldu'
     }
   } catch (error) {
-    console.error('createCustomerAuth error:', error)
-    throw new Error(error.message || 'Panel şifresi gönderilemedi')
+    console.error('prepareCustomerAuth error:', error)
+    throw new Error(error.message || 'Panel şifresi hazırlanamadı')
+  }
+}
+
+/**
+ * Send password SMS (after confirmation)
+ * @param {Object} customer - Customer object
+ * @param {string} message - SMS message to send
+ * @returns {Promise<Object>} Result
+ */
+export const sendPasswordSMS = async (customer, message) => {
+  try {
+    await sendSMS(customer.phone, message)
+
+    return {
+      success: true,
+      message: 'Panel şifresi SMS ile gönderildi'
+    }
+  } catch (error) {
+    console.error('sendPasswordSMS error:', error)
+    throw new Error(error.message || 'SMS gönderilemedi')
   }
 }
 
@@ -122,6 +140,6 @@ E-posta: ${customer.email}
  * @returns {Promise<Object>} Result with new password
  */
 export const resetCustomerPassword = async (customer) => {
-  // For now, just call createCustomerAuth which updates if exists
-  return await createCustomerAuth(customer)
+  // For now, just call prepareCustomerAuth which updates if exists
+  return await prepareCustomerAuth(customer)
 }
