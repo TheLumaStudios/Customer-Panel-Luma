@@ -66,6 +66,9 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Fetching profile for user:', userId)
 
+      // Get current user to access metadata
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+
       const response = await supabaseApi.get('/profiles', {
         params: {
           id: `eq.${userId}`,
@@ -75,18 +78,56 @@ export const AuthProvider = ({ children }) => {
 
       console.log('Profile query result:', response.data)
 
-      const data = response.data?.[0] || null
+      let data = response.data?.[0] || null
 
       if (data) {
         console.log('Profile found:', data)
         setProfile(data)
       } else {
         console.warn('No profile found for user:', userId)
-        setProfile(null)
+
+        // If no profile found, try to use user metadata (for customer_auth users)
+        if (currentUser?.user_metadata) {
+          console.log('Using user metadata as profile:', currentUser.user_metadata)
+          const metadataProfile = {
+            id: userId,
+            email: currentUser.email,
+            full_name: currentUser.user_metadata.full_name || '',
+            role: currentUser.user_metadata.role || 'customer',
+            customer_id: currentUser.user_metadata.customer_id,
+            phone: currentUser.user_metadata.phone || '',
+            company_name: currentUser.user_metadata.company_name || '',
+          }
+          setProfile(metadataProfile)
+        } else {
+          setProfile(null)
+        }
       }
     } catch (error) {
       console.error('Unexpected error fetching profile:', error)
-      setProfile(null)
+
+      // Fallback: try to use user metadata
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        if (currentUser?.user_metadata) {
+          console.log('Fallback: Using user metadata as profile')
+          const metadataProfile = {
+            id: userId,
+            email: currentUser.email,
+            full_name: currentUser.user_metadata.full_name || '',
+            role: currentUser.user_metadata.role || 'customer',
+            customer_id: currentUser.user_metadata.customer_id,
+            phone: currentUser.user_metadata.phone || '',
+            company_name: currentUser.user_metadata.company_name || '',
+          }
+          setProfile(metadataProfile)
+        } else {
+          setProfile(null)
+        }
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError)
+        setProfile(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -199,6 +240,26 @@ export const AuthProvider = ({ children }) => {
             }
 
             return { data: retryData, error: null }
+          }
+
+          // Create profile for newly created user
+          if (signUpData.user) {
+            try {
+              await supabase.from('profiles').insert([
+                {
+                  id: signUpData.user.id,
+                  email: email,
+                  role: 'customer',
+                  full_name: customerAuth.customer?.full_name || '',
+                  phone: customerAuth.customer?.phone || '',
+                  company_name: customerAuth.customer?.company_name || '',
+                },
+              ])
+              console.log('Profile created for customer_auth user')
+            } catch (profileError) {
+              console.error('Profile creation error:', profileError)
+              // Don't throw - metadata fallback will work
+            }
           }
 
           // Sign in with newly created account
