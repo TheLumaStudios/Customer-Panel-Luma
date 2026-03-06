@@ -147,13 +147,78 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     try {
+      // First try Supabase Auth (for admin users)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
-      return { data, error: null }
+      if (!error) {
+        return { data, error: null }
+      }
+
+      // If Supabase Auth fails, try customer_auth table
+      console.log('Supabase Auth failed, trying customer_auth...')
+
+      try {
+        const { data: customerAuthData } = await supabaseApi.get('/customer_auth', {
+          params: {
+            select: '*,customer:customers(*)',
+            email: `eq.${email}`,
+            password: `eq.${password}`,
+            limit: 1
+          }
+        })
+
+        if (customerAuthData && customerAuthData.length > 0) {
+          const customerAuth = customerAuthData[0]
+
+          // Create Supabase Auth user for this customer
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+              data: {
+                full_name: customerAuth.customer?.full_name,
+                role: 'customer',
+                customer_id: customerAuth.customer_id
+              }
+            }
+          })
+
+          if (signUpError) {
+            console.error('Auto signup error:', signUpError)
+            // If signup fails (user exists), try signin again
+            const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            })
+
+            if (retryError) {
+              throw new Error('Giriş yapılamadı. Lütfen tekrar deneyin.')
+            }
+
+            return { data: retryData, error: null }
+          }
+
+          // Sign in with newly created account
+          const { data: newSignInData, error: newSignInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+
+          if (newSignInError) {
+            throw newSignInError
+          }
+
+          return { data: newSignInData, error: null }
+        }
+      } catch (customerAuthError) {
+        console.error('customer_auth lookup error:', customerAuthError)
+      }
+
+      // Both methods failed
+      throw error
     } catch (error) {
       return { data: null, error }
     }
