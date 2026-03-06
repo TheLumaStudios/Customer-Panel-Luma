@@ -138,9 +138,14 @@ export default function Customers() {
     try {
       const result = await createCustomerAuth(customer)
 
-      toast.success('Panel şifresi gönderildi', {
-        description: `${customer.phone} numarasına SMS gönderildi`
-      })
+      toast.success(
+        result.isExisting ? 'Mevcut şifre gönderildi' : 'Yeni şifre oluşturuldu',
+        {
+          description: result.isExisting
+            ? `${customer.phone} numarasına mevcut panel şifresi gönderildi`
+            : `${customer.phone} numarasına yeni şifre gönderildi`
+        }
+      )
     } catch (error) {
       console.error('Panel şifresi gönderme hatası:', error)
       toast.error('Panel şifresi gönderilemedi', {

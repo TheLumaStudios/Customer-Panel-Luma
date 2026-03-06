@@ -32,8 +32,8 @@ export const createCustomerAuth = async (customer) => {
       throw new Error('Müşterinin telefon numarası bulunamadı')
     }
 
-    // Generate random password
-    const password = generatePassword(12)
+    let password
+    let isExisting = false
 
     // TEMPORARY: Store password in customer_auth table
     // In production, use backend endpoint with service_role key
@@ -41,7 +41,7 @@ export const createCustomerAuth = async (customer) => {
       // Check if auth record exists
       const { data: existing } = await supabaseApi.get('/customer_auth', {
         params: {
-          select: 'id',
+          select: '*',
           customer_id: `eq.${customer.id}`,
           limit: 1
         }
@@ -50,19 +50,14 @@ export const createCustomerAuth = async (customer) => {
       console.log('Existing customer_auth records:', existing)
 
       if (existing && existing.length > 0) {
-        // Update existing
-        console.log('Updating existing customer_auth record...')
-        const response = await supabaseApi.patch('/customer_auth', {
-          password: password,
-          email: customer.email,
-          updated_at: new Date().toISOString()
-        }, {
-          params: {
-            customer_id: `eq.${customer.id}`
-          }
-        })
-        console.log('Update response:', response.data)
+        // Use existing password
+        password = existing[0].password
+        isExisting = true
+        console.log('Using existing password from database')
       } else {
+        // Generate new random password
+        password = generatePassword(12)
+
         // Create new
         console.log('Creating new customer_auth record...', {
           customer_id: customer.id,
@@ -85,7 +80,17 @@ export const createCustomerAuth = async (customer) => {
     }
 
     // Send password via SMS
-    const smsMessage = `Merhaba ${customer.full_name},
+    const smsMessage = isExisting
+      ? `Merhaba ${customer.full_name},
+
+Panel giriş bilgileriniz:
+
+Web: ${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}
+E-posta: ${customer.email}
+Şifre: ${password}
+
+Şifrenizi unutmayın!`
+      : `Merhaba ${customer.full_name},
 
 Müşteri paneliniz hazır!
 
@@ -100,7 +105,10 @@ E-posta: ${customer.email}
     return {
       success: true,
       password: password,
-      message: 'Panel şifresi oluşturuldu ve SMS ile gönderildi'
+      isExisting: isExisting,
+      message: isExisting
+        ? 'Mevcut panel şifresi SMS ile gönderildi'
+        : 'Panel şifresi oluşturuldu ve SMS ile gönderildi'
     }
   } catch (error) {
     console.error('createCustomerAuth error:', error)
