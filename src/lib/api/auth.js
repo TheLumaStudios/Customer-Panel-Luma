@@ -47,27 +47,41 @@ export const createCustomerAuth = async (customer) => {
         }
       })
 
+      console.log('Existing customer_auth records:', existing)
+
       if (existing && existing.length > 0) {
         // Update existing
-        await supabaseApi.patch('/customer_auth', {
+        console.log('Updating existing customer_auth record...')
+        const response = await supabaseApi.patch('/customer_auth', {
           password: password,
+          email: customer.email,
           updated_at: new Date().toISOString()
         }, {
           params: {
             customer_id: `eq.${customer.id}`
           }
         })
+        console.log('Update response:', response.data)
       } else {
         // Create new
-        await supabaseApi.post('/customer_auth', {
+        console.log('Creating new customer_auth record...', {
+          customer_id: customer.id,
+          email: customer.email,
+          password: password.substring(0, 3) + '***' // Only log first 3 chars
+        })
+        const response = await supabaseApi.post('/customer_auth', {
           customer_id: customer.id,
           email: customer.email,
           password: password,
         })
+        console.log('Create response:', response.data)
       }
     } catch (dbError) {
-      console.error('Database error:', dbError)
-      // Continue to send SMS even if db fails
+      console.error('Database error details:', dbError)
+      console.error('Error response:', dbError.response?.data)
+      console.error('Error status:', dbError.response?.status)
+      // Throw error instead of continuing - we need to know what's wrong
+      throw new Error(`Database error: ${dbError.response?.data?.message || dbError.message}`)
     }
 
     // Send password via SMS
