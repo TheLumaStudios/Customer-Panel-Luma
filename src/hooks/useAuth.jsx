@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => {
+        fetchProfile(session.user).finally(() => {
           clearTimeout(loadingTimeout)
         })
       } else {
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
         console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          await fetchProfile(session.user)
         } else {
           setProfile(null)
           setLoading(false)
@@ -62,13 +62,30 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (user) => {
     try {
+      const userId = user.id
       console.log('Fetching profile for user:', userId)
+      console.log('User metadata:', user.user_metadata)
 
-      // Get current user to access metadata
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      // First, try to use user metadata if available (fastest)
+      if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
+        console.log('Using user metadata as profile:', user.user_metadata)
+        const metadataProfile = {
+          id: userId,
+          email: user.email,
+          full_name: user.user_metadata.full_name || '',
+          role: user.user_metadata.role || 'customer',
+          customer_id: user.user_metadata.customer_id,
+          phone: user.user_metadata.phone || '',
+          company_name: user.user_metadata.company_name || '',
+        }
+        setProfile(metadataProfile)
+        setLoading(false)
+        return
+      }
 
+      // If no metadata, try profiles table
       const response = await supabaseApi.get('/profiles', {
         params: {
           id: `eq.${userId}`,
@@ -81,53 +98,27 @@ export const AuthProvider = ({ children }) => {
       let data = response.data?.[0] || null
 
       if (data) {
-        console.log('Profile found:', data)
+        console.log('Profile found in table:', data)
         setProfile(data)
       } else {
         console.warn('No profile found for user:', userId)
-
-        // If no profile found, try to use user metadata (for customer_auth users)
-        if (currentUser?.user_metadata) {
-          console.log('Using user metadata as profile:', currentUser.user_metadata)
-          const metadataProfile = {
-            id: userId,
-            email: currentUser.email,
-            full_name: currentUser.user_metadata.full_name || '',
-            role: currentUser.user_metadata.role || 'customer',
-            customer_id: currentUser.user_metadata.customer_id,
-            phone: currentUser.user_metadata.phone || '',
-            company_name: currentUser.user_metadata.company_name || '',
-          }
-          setProfile(metadataProfile)
-        } else {
-          setProfile(null)
-        }
+        // Create minimal profile from user email
+        setProfile({
+          id: userId,
+          email: user.email,
+          role: 'customer',
+          full_name: user.email.split('@')[0],
+        })
       }
     } catch (error) {
       console.error('Unexpected error fetching profile:', error)
-
-      // Fallback: try to use user metadata
-      try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        if (currentUser?.user_metadata) {
-          console.log('Fallback: Using user metadata as profile')
-          const metadataProfile = {
-            id: userId,
-            email: currentUser.email,
-            full_name: currentUser.user_metadata.full_name || '',
-            role: currentUser.user_metadata.role || 'customer',
-            customer_id: currentUser.user_metadata.customer_id,
-            phone: currentUser.user_metadata.phone || '',
-            company_name: currentUser.user_metadata.company_name || '',
-          }
-          setProfile(metadataProfile)
-        } else {
-          setProfile(null)
-        }
-      } catch (fallbackError) {
-        console.error('Fallback error:', fallbackError)
-        setProfile(null)
-      }
+      // Minimal fallback
+      setProfile({
+        id: user.id,
+        email: user.email,
+        role: 'customer',
+        full_name: user.email.split('@')[0],
+      })
     } finally {
       setLoading(false)
     }
