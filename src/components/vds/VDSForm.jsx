@@ -41,6 +41,12 @@ const vdsSchema = z.object({
   username: z.string().optional().or(z.literal('')),
   password: z.string().optional().or(z.literal('')),
   root_password: z.string().optional().or(z.literal('')),
+  ssh_port: z.coerce.number().optional(),
+  control_panel_url: z.string().optional().or(z.literal('')),
+  control_panel_username: z.string().optional().or(z.literal('')),
+  control_panel_password: z.string().optional().or(z.literal('')),
+  vnc_port: z.coerce.number().optional(),
+  vnc_password: z.string().optional().or(z.literal('')),
   start_date: z.string().optional().or(z.literal('')).nullable(),
   expiration_date: z.string().optional().or(z.literal('')).nullable(),
   billing_cycle: z.enum(['monthly', 'yearly', 'quarterly', 'one-time']).default('monthly'),
@@ -72,6 +78,12 @@ export default function VDSForm({ open, onOpenChange, vds, customers, onSubmit }
     username: vds?.username || '',
     password: vds?.password || '',
     root_password: vds?.root_password || '',
+    ssh_port: vds?.ssh_port || 22,
+    control_panel_url: vds?.control_panel_url || '',
+    control_panel_username: vds?.control_panel_username || '',
+    control_panel_password: vds?.control_panel_password || '',
+    vnc_port: vds?.vnc_port || null,
+    vnc_password: vds?.vnc_password || '',
     start_date: vds?.start_date || new Date().toISOString().split('T')[0],
     expiration_date: vds?.expiration_date || '',
     billing_cycle: vds?.billing_cycle || 'monthly',
@@ -113,6 +125,12 @@ export default function VDSForm({ open, onOpenChange, vds, customers, onSubmit }
         username: data.username || null,
         password: data.password || null,
         root_password: data.root_password || null,
+        ssh_port: data.ssh_port || 22,
+        control_panel_url: data.control_panel_url || null,
+        control_panel_username: data.control_panel_username || null,
+        control_panel_password: data.control_panel_password || null,
+        vnc_port: data.vnc_port || null,
+        vnc_password: data.vnc_password || null,
         start_date: noStartDate || !data.start_date ? null : data.start_date,
         expiration_date: noExpirationDate || !data.expiration_date ? null : data.expiration_date,
         billing_cycle: data.billing_cycle || 'monthly',
@@ -411,6 +429,100 @@ export default function VDSForm({ open, onOpenChange, vds, customers, onSubmit }
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="ssh_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SSH Port</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" placeholder="22" />
+                      </FormControl>
+                      <FormDescription>Varsayılan: 22</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="vnc_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>VNC Port</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" placeholder="5900" />
+                      </FormControl>
+                      <FormDescription>Opsiyonel</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="vnc_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>VNC Şifresi</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="••••••••" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-2 pt-2">
+                <h4 className="text-sm font-medium">Kontrol Paneli Bilgileri (Opsiyonel)</h4>
+                <FormField
+                  control={form.control}
+                  name="control_panel_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Panel URL</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="https://panel.example.com" />
+                      </FormControl>
+                      <FormDescription>SolusVM, Virtualizor vb. panel adresi</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="control_panel_username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Panel Kullanıcı Adı</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="admin" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="control_panel_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Panel Şifresi</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="password" placeholder="••••••••" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
