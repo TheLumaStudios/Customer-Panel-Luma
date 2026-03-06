@@ -12,7 +12,8 @@ import {
   Ticket,
   Settings,
   LogOut,
-  Monitor
+  Monitor,
+  Cpu
 } from 'lucide-react'
 
 const adminMenuItems = [
@@ -32,6 +33,7 @@ const customerMenuItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Domainlerim', path: '/domains', icon: Globe },
   { name: 'Hostingim', path: '/hosting', icon: Server },
+  { name: 'VDS / VPS', path: '/vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   { name: 'Profil', path: '/profile', icon: Settings },

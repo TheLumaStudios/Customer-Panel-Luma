@@ -20,6 +20,7 @@ import Tickets from '@/pages/admin/Tickets'
 import Settings from '@/pages/admin/Settings'
 import MyDomains from '@/pages/customer/MyDomains'
 import MyHosting from '@/pages/customer/MyHosting'
+import MyVDS from '@/pages/customer/MyVDS'
 import MyInvoices from '@/pages/customer/MyInvoices'
 import MyTickets from '@/pages/customer/MyTickets'
 import Profile from '@/pages/customer/Profile'
@@ -67,6 +68,7 @@ function App() {
             <Route path="dashboard" element={<CustomerDashboard />} />
             <Route path="domains" element={<MyDomains />} />
             <Route path="hosting" element={<MyHosting />} />
+            <Route path="vds" element={<MyVDS />} />
             <Route path="invoices" element={<MyInvoices />} />
             <Route path="tickets" element={<MyTickets />} />
             <Route path="profile" element={<Profile />} />

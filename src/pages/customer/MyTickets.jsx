@@ -1,18 +1,62 @@
-import { useTickets } from '@/hooks/useTickets'
+import { useState } from 'react'
+import { useTickets, useCreateTicket } from '@/hooks/useTickets'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useCustomers } from '@/hooks/useCustomers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Plus, Eye, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { toast } from '@/lib/toast'
+import CustomerTicketForm from '@/components/tickets/CustomerTicketForm'
 
 export default function MyTickets() {
+  const [formOpen, setFormOpen] = useState(false)
   const { profile } = useAuth()
   const { data: allTickets, isLoading, error } = useTickets()
+  const { data: customers } = useCustomers()
+  const createTicket = useCreateTicket()
+
+  // Find current customer
+  const currentCustomer = customers?.find(c => c.email === profile?.email)
 
   // Filter tickets for current customer
-  const tickets = allTickets?.filter(ticket => ticket.customer?.profile?.email === profile?.email)
+  const tickets = allTickets?.filter(ticket => ticket.customer_id === currentCustomer?.id)
+
+  const handleCreate = () => {
+    setFormOpen(true)
+  }
+
+  const handleSubmit = async (data) => {
+    if (!currentCustomer) {
+      toast.error('Müşteri bilgisi bulunamadı', {
+        description: 'Lütfen sayfayı yenileyin'
+      })
+      return
+    }
+
+    try {
+      await createTicket.mutateAsync({
+        customer_id: currentCustomer.id,
+        subject: data.subject,
+        description: data.description,
+        category: data.category,
+        priority: data.priority,
+        status: 'open',
+      })
+
+      toast.success('Destek talebi oluşturuldu', {
+        description: 'Talebiniz en kısa sürede yanıtlanacak'
+      })
+      setFormOpen(false)
+    } catch (error) {
+      console.error('Ticket creation error:', error)
+      toast.error('Talep oluşturulamadı', {
+        description: error.message
+      })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -86,7 +130,7 @@ export default function MyTickets() {
             Destek taleplerini oluşturun ve takip edin
           </p>
         </div>
-        <Button>
+        <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Yeni Talep Oluştur
         </Button>
@@ -195,6 +239,12 @@ export default function MyTickets() {
           )}
         </CardContent>
       </Card>
+
+      <CustomerTicketForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }

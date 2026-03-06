@@ -1,33 +1,88 @@
 import { useState } from 'react'
 import { useHosting } from '@/hooks/useHosting'
-import { useVDS } from '@/hooks/useVDS'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCustomers } from '@/hooks/useCustomers'
+import { useCreateTicket } from '@/hooks/useTickets'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Server, AlertCircle, Cpu, HardDrive } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Server, AlertCircle, Eye, Copy, Check, RotateCw } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
+import { toast } from '@/lib/toast'
 
 export default function MyHosting() {
-  const [activeTab, setActiveTab] = useState('hosting')
+  const [selectedHosting, setSelectedHosting] = useState(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [copiedField, setCopiedField] = useState(null)
   const { profile } = useAuth()
-  const { data: allHosting, isLoading: hostingLoading, error: hostingError } = useHosting()
-  const { data: allVDS, isLoading: vdsLoading, error: vdsError } = useVDS()
+  const { data: allHosting, isLoading, error } = useHosting()
   const { data: customers } = useCustomers()
+  const createTicket = useCreateTicket()
 
   // Find current customer's ID
-  const currentCustomer = customers?.find(c => c.profile?.email === profile?.email)
+  const currentCustomer = customers?.find(c => c.email === profile?.email)
 
   // Filter hosting records for current customer
   const packages = allHosting?.filter(pkg => pkg.customer_id === currentCustomer?.id)
 
-  // Filter VDS records for current customer
-  const vdsPackages = allVDS?.filter(vds => vds.customer_id === currentCustomer?.id)
+  const handleCopy = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+    }
+  }
 
-  const isLoading = hostingLoading || vdsLoading
-  const error = hostingError || vdsError
+  const handleShowDetails = (pkg) => {
+    setSelectedHosting(pkg)
+    setDetailsOpen(true)
+  }
+
+  const handleRestartRequest = async (pkg) => {
+    if (!currentCustomer) {
+      toast.error('Müşteri bilgisi bulunamadı', {
+        description: 'Lütfen sayfayı yenileyin'
+      })
+      return
+    }
+
+    if (!confirm(`${pkg.package_name} için restart talebi oluşturmak istediğinize emin misiniz?`)) {
+      return
+    }
+
+    try {
+      await createTicket.mutateAsync({
+        customer_id: currentCustomer.id,
+        subject: `Hosting Restart Talebi - ${pkg.package_name}`,
+        description: `${pkg.package_name} hosting paketi için restart talebi.
+
+Hosting Bilgileri:
+- Paket Adı: ${pkg.package_name}
+- Paket Tipi: ${pkg.package_type}
+- Disk Alanı: ${pkg.disk_space_gb ? `${pkg.disk_space_gb} GB` : 'Sınırsız'}
+- cPanel Kullanıcı: ${pkg.cpanel_username || '-'}
+- Server IP: ${pkg.server_ip || '-'}
+
+Lütfen en kısa sürede hosting paketimi restart ediniz.`,
+        category: 'hosting',
+        priority: 'high',
+        status: 'open',
+      })
+
+      toast.success('Restart talebi oluşturuldu', {
+        description: 'Talebiniz en kısa sürede işleme alınacak'
+      })
+    } catch (error) {
+      console.error('Restart request error:', error)
+      toast.error('Talep oluşturulamadı', {
+        description: error.message
+      })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -96,58 +151,132 @@ export default function MyHosting() {
     return <Badge variant={type.variant}>{type.label}</Badge>
   }
 
-  const getVDSStatusBadge = (status) => {
-    const variants = {
-      active: 'default',
-      suspended: 'secondary',
-      expired: 'destructive',
-      terminated: 'destructive',
-    }
-    const labels = {
-      active: 'Aktif',
-      suspended: 'Askıda',
-      expired: 'Süresi Doldu',
-      terminated: 'Sonlandırıldı',
-    }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
-  }
+  const CopyableField = ({ label, value, fieldName }) => {
+    if (!value) return null
 
-  const getVDSTypeBadge = (type) => {
-    const colors = {
-      VDS: 'bg-blue-100 text-blue-800',
-      VPS: 'bg-green-100 text-green-800',
-      Dedicated: 'bg-purple-100 text-purple-800',
-    }
     return (
-      <Badge variant="outline" className={colors[type]}>
-        {type}
-      </Badge>
+      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+        <div className="flex-1">
+          <div className="text-xs text-muted-foreground mb-1">{label}</div>
+          <div className="font-mono text-sm">{value}</div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-2"
+          onClick={() => handleCopy(value, fieldName)}
+        >
+          {copiedField === fieldName ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Sunucu Paketlerim</h1>
+        <h1 className="text-3xl font-bold">Hosting Paketlerim</h1>
         <p className="text-muted-foreground mt-1">
-          Hosting ve VDS/VPS paketlerinizi yönetin
+          Hosting paketlerinizi yönetin ve erişim bilgilerine ulaşın
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="hosting" className="flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            Hosting ({packages?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="vds" className="flex items-center gap-2">
-            <Cpu className="h-4 w-4" />
-            VDS/VPS ({vdsPackages?.length || 0})
-          </TabsTrigger>
-        </TabsList>
+      {/* Hosting Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{selectedHosting?.package_name}</DialogTitle>
+            <DialogDescription>
+              Hosting paketinizin erişim bilgileri ve detayları
+            </DialogDescription>
+          </DialogHeader>
 
-        <TabsContent value="hosting" className="space-y-4">
-          <Card>
+          <div className="space-y-4">
+            {/* Package Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Paket Tipi</div>
+                <div>{getPackageTypeBadge(selectedHosting?.package_type)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Durum</div>
+                <div>{getStatusBadge(selectedHosting?.status)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Disk Alanı</div>
+                <div className="text-sm">
+                  {selectedHosting?.disk_space_gb ? `${selectedHosting.disk_space_gb} GB` : 'Sınırsız'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Bitiş Tarihi</div>
+                <div className="text-sm">{formatDate(selectedHosting?.expiration_date)}</div>
+              </div>
+            </div>
+
+            {/* Credentials */}
+            <div className="space-y-3 pt-3 border-t">
+              <h4 className="font-semibold text-sm">Erişim Bilgileri</h4>
+
+              <CopyableField
+                label="Server IP"
+                value={selectedHosting?.server_ip}
+                fieldName="server_ip"
+              />
+
+              <CopyableField
+                label="cPanel Kullanıcı Adı"
+                value={selectedHosting?.cpanel_username}
+                fieldName="cpanel_username"
+              />
+
+              <CopyableField
+                label="cPanel Şifre"
+                value={selectedHosting?.cpanel_password}
+                fieldName="cpanel_password"
+              />
+
+              <CopyableField
+                label="FTP Kullanıcı Adı"
+                value={selectedHosting?.ftp_username}
+                fieldName="ftp_username"
+              />
+
+              <CopyableField
+                label="FTP Şifre"
+                value={selectedHosting?.ftp_password}
+                fieldName="ftp_password"
+              />
+
+              <CopyableField
+                label="Nameserver 1"
+                value={selectedHosting?.nameserver_1}
+                fieldName="nameserver_1"
+              />
+
+              <CopyableField
+                label="Nameserver 2"
+                value={selectedHosting?.nameserver_2}
+                fieldName="nameserver_2"
+              />
+            </div>
+
+            {!selectedHosting?.cpanel_username && !selectedHosting?.server_ip && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  ℹ️ Erişim bilgileri henüz tanımlanmamış. Lütfen destek ekibi ile iletişime geçin.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
         <CardHeader>
           <CardTitle>Hosting Paketleri</CardTitle>
           <CardDescription>
@@ -171,6 +300,7 @@ export default function MyHosting() {
                   <TableHead>Bitiş Tarihi</TableHead>
                   <TableHead>Kalan Süre</TableHead>
                   <TableHead>Durum</TableHead>
+                  <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,6 +320,27 @@ export default function MyHosting() {
                     <TableCell>{formatDate(pkg.expiration_date)}</TableCell>
                     <TableCell>{getExpirationBadge(pkg.expiration_date)}</TableCell>
                     <TableCell>{getStatusBadge(pkg.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleShowDetails(pkg)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Bilgileri Göster
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestartRequest(pkg)}
+                          disabled={pkg.status !== 'active'}
+                        >
+                          <RotateCw className="h-4 w-4 mr-2" />
+                          Restart
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -198,135 +349,28 @@ export default function MyHosting() {
         </CardContent>
       </Card>
 
-          {/* Expiring Soon Warning */}
-          {packages?.some(pkg => {
-            const daysUntilExpiry = Math.ceil((new Date(pkg.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
-            return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
-          }) && (
-            <Card className="border-yellow-500 bg-yellow-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                  <CardTitle className="text-yellow-900">Dikkat: Yakında Sona Erecek Paketler</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-yellow-800">
-                  {packages?.filter(pkg => {
-                    const daysUntilExpiry = Math.ceil((new Date(pkg.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
-                    return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
-                  }).length} hosting paketi 30 gün içinde sona erecek. Lütfen yenileme işlemlerinizi zamanında yapın.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="vds" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>VDS / VPS Sunucularım</CardTitle>
-              <CardDescription>
-                Toplam {vdsPackages?.length || 0} sunucu
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {vdsPackages?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Cpu className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Henüz VDS/VPS sunucunuz bulunmuyor.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Sunucu Adı</TableHead>
-                      <TableHead>Tip</TableHead>
-                      <TableHead>Özellikler</TableHead>
-                      <TableHead>IP Adresi</TableHead>
-                      <TableHead>İşletim Sistemi</TableHead>
-                      <TableHead>Bitiş Tarihi</TableHead>
-                      <TableHead>Durum</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {vdsPackages?.map((vds) => (
-                      <TableRow key={vds.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="h-4 w-4 text-muted-foreground" />
-                            {vds.vds_name}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getVDSTypeBadge(vds.vds_type)}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="flex items-center gap-1">
-                              <Cpu className="h-3 w-3" />
-                              {vds.cpu_cores} Core
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <HardDrive className="h-3 w-3" />
-                              {vds.ram_gb} GB RAM
-                            </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              {vds.disk_space_gb} GB Disk
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-muted px-2 py-1 rounded">
-                            {vds.ip_address || '-'}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{vds.operating_system || '-'}</span>
-                        </TableCell>
-                        <TableCell>
-                          {vds.expiration_date ? (
-                            <div>
-                              <div className="text-sm">{formatDate(vds.expiration_date)}</div>
-                              {vds.expiration_date && getExpirationBadge(vds.expiration_date)}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Sınırsız</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{getVDSStatusBadge(vds.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* VDS Expiring Soon Warning */}
-          {vdsPackages?.some(vds => {
-            if (!vds.expiration_date) return false
-            const daysUntilExpiry = Math.ceil((new Date(vds.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
-            return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
-          }) && (
-            <Card className="border-yellow-500 bg-yellow-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                  <CardTitle className="text-yellow-900">Dikkat: Yakında Sona Erecek Sunucular</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-yellow-800">
-                  {vdsPackages?.filter(vds => {
-                    if (!vds.expiration_date) return false
-                    const daysUntilExpiry = Math.ceil((new Date(vds.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
-                    return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
-                  }).length} VDS/VPS sunucu 30 gün içinde sona erecek. Lütfen yenileme işlemlerinizi zamanında yapın.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Expiring Soon Warning */}
+      {packages?.some(pkg => {
+        const daysUntilExpiry = Math.ceil((new Date(pkg.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
+        return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
+      }) && (
+        <Card className="border-yellow-500 bg-yellow-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <CardTitle className="text-yellow-900">Dikkat: Yakında Sona Erecek Paketler</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-yellow-800">
+              {packages?.filter(pkg => {
+                const daysUntilExpiry = Math.ceil((new Date(pkg.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
+                return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
+              }).length} hosting paketi 30 gün içinde sona erecek. Lütfen yenileme işlemlerinizi zamanında yapın.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
