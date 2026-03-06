@@ -1,12 +1,24 @@
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useCustomers } from '@/hooks/useCustomers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Mail, Phone, Building2 } from 'lucide-react'
+import { User, Mail, Phone, Building2, FileText, MapPin } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 
 export default function Profile() {
   const { profile } = useAuth()
+  const { data: customers } = useCustomers()
+
+  // Find current customer
+  const currentCustomer = customers?.find(c => c.email === profile?.email)
+
+  console.log('Profile Debug:', {
+    profile,
+    customers,
+    currentCustomer
+  })
 
   return (
     <div className="space-y-6">
@@ -95,23 +107,81 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b">
-              <span className="text-sm text-muted-foreground">Rol</span>
-              <span className="font-medium capitalize">{profile?.role || '-'}</span>
+              <span className="text-sm text-muted-foreground">Müşteri Kodu</span>
+              <span className="font-medium">{currentCustomer?.customer_code || '-'}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b">
+              <span className="text-sm text-muted-foreground">Durum</span>
+              <span className="font-medium capitalize">{currentCustomer?.status || '-'}</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b">
               <span className="text-sm text-muted-foreground">Kayıt Tarihi</span>
               <span className="font-medium">
-                {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('tr-TR') : '-'}
+                {currentCustomer?.created_at ? formatDate(currentCustomer.created_at) : '-'}
               </span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b">
-              <span className="text-sm text-muted-foreground">Son Güncelleme</span>
-              <span className="font-medium">
-                {profile?.updated_at ? new Date(profile.updated_at).toLocaleDateString('tr-TR') : '-'}
-              </span>
-            </div>
+            {currentCustomer?.tc_no && (
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm text-muted-foreground">TC No</span>
+                <span className="font-medium">{currentCustomer.tc_no}</span>
+              </div>
+            )}
+            {currentCustomer?.vkn && (
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm text-muted-foreground">VKN</span>
+                <span className="font-medium">{currentCustomer.vkn}</span>
+              </div>
+            )}
+            {currentCustomer?.tax_office && (
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm text-muted-foreground">Vergi Dairesi</span>
+                <span className="font-medium">{currentCustomer.tax_office}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {currentCustomer?.billing_address && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Adres Bilgileri</CardTitle>
+              <CardDescription>
+                Fatura ve teslimat adresiniz
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Fatura Adresi
+                </Label>
+                <div className="p-3 bg-muted/30 rounded-md text-sm">
+                  <p>{currentCustomer.billing_address}</p>
+                  {currentCustomer.billing_district && <p>{currentCustomer.billing_district}</p>}
+                  {currentCustomer.billing_city && <p>{currentCustomer.billing_city}</p>}
+                  {currentCustomer.billing_postal_code && <p>Posta Kodu: {currentCustomer.billing_postal_code}</p>}
+                  <p>{currentCustomer.billing_country || 'Türkiye'}</p>
+                </div>
+              </div>
+
+              {!currentCustomer.same_as_billing && currentCustomer.shipping_address && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Teslimat Adresi
+                  </Label>
+                  <div className="p-3 bg-muted/30 rounded-md text-sm">
+                    <p>{currentCustomer.shipping_address}</p>
+                    {currentCustomer.shipping_district && <p>{currentCustomer.shipping_district}</p>}
+                    {currentCustomer.shipping_city && <p>{currentCustomer.shipping_city}</p>}
+                    {currentCustomer.shipping_postal_code && <p>Posta Kodu: {currentCustomer.shipping_postal_code}</p>}
+                    <p>{currentCustomer.shipping_country || 'Türkiye'}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

@@ -15,6 +15,16 @@ export default function MyVDS() {
   // Find current customer's ID
   const currentCustomer = customers?.find(c => c.email === profile?.email)
 
+  // Debug logs
+  console.log('MyVDS Debug:', {
+    profile,
+    profileEmail: profile?.email,
+    customers,
+    currentCustomer,
+    allVDS,
+    filteredVDS: allVDS?.filter(vds => vds.customer_id === currentCustomer?.id)
+  })
+
   // Filter VDS records for current customer
   const vdsPackages = allVDS?.filter(vds => vds.customer_id === currentCustomer?.id)
 
