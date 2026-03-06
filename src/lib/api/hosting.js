@@ -7,11 +7,16 @@ export const getHosting = async () => {
   try {
     const response = await supabaseApi.get('/hosting', {
       params: {
-        select: '*,customer:customers(*)',
+        select: '*,customer:customers(*),package:hosting_packages(package_type)',
         order: 'expiration_date.asc.nullslast'
       }
     })
-    return response.data || []
+    // Flatten package_type to root level for easier access
+    const data = response.data?.map(hosting => ({
+      ...hosting,
+      package_type: hosting.package?.package_type || null
+    })) || []
+    return data
   } catch (error) {
     console.error('getHosting failed:', error)
     throw error
@@ -22,11 +27,16 @@ export const getHostingRecord = async (id) => {
   try {
     const response = await supabaseApi.get('/hosting', {
       params: {
-        select: '*,customer:customers(*)',
+        select: '*,customer:customers(*),package:hosting_packages(package_type)',
         id: `eq.${id}`
       }
     })
-    return response.data?.[0] || null
+    const hosting = response.data?.[0] || null
+    if (hosting) {
+      // Flatten package_type to root level for easier access
+      hosting.package_type = hosting.package?.package_type || null
+    }
+    return hosting
   } catch (error) {
     console.error('getHostingRecord failed:', error)
     throw error
