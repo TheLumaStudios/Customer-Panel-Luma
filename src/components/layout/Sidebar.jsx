@@ -56,15 +56,15 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
-      <div className="p-6 border-b border-border">
+    <aside className="w-64 h-screen bg-card border-r border-border flex flex-col">
+      <div className="p-6 border-b border-border flex-shrink-0">
         <h1 className="text-2xl font-bold text-foreground">Customer Panel</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {profile?.role === 'admin' ? 'Admin Panel' : 'Müşteri Paneli'}
         </p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin">
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = location.pathname === item.path
@@ -87,7 +87,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border flex-shrink-0">
         <div className="mb-3 px-4">
           <p className="text-sm font-medium text-foreground truncate">
             {profile?.full_name || 'Kullanıcı'}

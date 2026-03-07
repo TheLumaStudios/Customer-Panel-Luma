@@ -31,6 +31,9 @@ CREATE TRIGGER customer_auth_updated_at_trigger
 -- Enable RLS
 ALTER TABLE customer_auth ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON customer_auth;
+
 -- Allow authenticated admin users to manage customer auth
 CREATE POLICY "Allow all operations for authenticated users"
 ON customer_auth

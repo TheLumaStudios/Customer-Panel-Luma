@@ -21,7 +21,14 @@ export function useDomainPricing() {
 
 export function useDomainRegister() {
   return useMutation({
-    mutationFn: ({ domainName, period, contacts, nameServers, privacyProtection }) =>
-      domainApi.registerDomain(domainName, period, contacts, nameServers, privacyProtection),
+    mutationFn: ({ domains, currency, payment_method, return_url, cancel_url }) =>
+      domainApi.registerDomains(domains, currency, payment_method, return_url, cancel_url),
+  })
+}
+
+export function useDomainRegisterSingle() {
+  return useMutation({
+    mutationFn: ({ domainName, period, contacts, nameservers }) =>
+      domainApi.registerDomain(domainName, period, contacts, nameservers),
   })
 }

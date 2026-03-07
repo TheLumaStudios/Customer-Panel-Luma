@@ -4,6 +4,11 @@
 -- Enable RLS on settings table
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies
+DROP POLICY IF EXISTS "Admins can view settings" ON settings;
+DROP POLICY IF EXISTS "Admins can update settings" ON settings;
+DROP POLICY IF EXISTS "Admins can insert settings" ON settings;
+
 -- Policy: Admins can view settings
 CREATE POLICY "Admins can view settings"
   ON settings

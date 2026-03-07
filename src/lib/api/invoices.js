@@ -1,155 +1,251 @@
-import supabaseApi from '@/lib/axios'
+import { supabase } from '@/lib/supabase'
 
-export const getInvoices = async () => {
+// Construct functions URL
+const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+const SUPABASE_FUNCTIONS_URL = baseUrl.includes('/rest/v1')
+  ? baseUrl.replace('/rest/v1', '/functions/v1')
+  : `${baseUrl}/functions/v1`
+
+/**
+ * Get invoices list
+ * @param {Object} params - Query parameters
+ * @param {string} params.customer_id - Filter by customer ID (admin only)
+ * @param {string} params.status - Filter by status
+ * @param {number} params.limit - Limit results
+ * @param {number} params.offset - Offset for pagination
+ */
+export const getInvoices = async (params = {}) => {
   try {
-    // Fetch invoices
-    const invoicesResponse = await supabaseApi.get('/invoices', {
-      params: {
-        select: '*,customer:customers(*)',
-        order: 'invoice_date.desc'
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const queryParams = new URLSearchParams()
+    if (params.customer_id) queryParams.append('customer_id', params.customer_id)
+    if (params.status) queryParams.append('status', params.status)
+    if (params.limit) queryParams.append('limit', params.limit.toString())
+    if (params.offset) queryParams.append('offset', params.offset.toString())
+
+    const response = await fetch(
+      `${SUPABASE_FUNCTIONS_URL}/invoice-list?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
       }
-    })
+    )
 
-    const invoices = invoicesResponse.data || []
+    const result = await response.json()
 
-    // Fetch invoice items for all invoices
-    if (invoices.length > 0) {
-      const invoiceIds = invoices.map(inv => inv.id).join(',')
-      const itemsResponse = await supabaseApi.get('/invoice_items', {
-        params: {
-          select: '*',
-          invoice_id: `in.(${invoiceIds})`
-        }
-      })
-
-      const items = itemsResponse.data || []
-
-      // Group items by invoice_id
-      const itemsByInvoice = items.reduce((acc, item) => {
-        if (!acc[item.invoice_id]) acc[item.invoice_id] = []
-        acc[item.invoice_id].push(item)
-        return acc
-      }, {})
-
-      // Attach items to invoices
-      invoices.forEach(invoice => {
-        invoice.invoice_items = itemsByInvoice[invoice.id] || []
-      })
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch invoices')
     }
 
-    return invoices
+    return {
+      invoices: result.invoices,
+      total: result.total,
+    }
   } catch (error) {
     console.error('getInvoices failed:', error)
     throw error
   }
 }
 
+/**
+ * Get single invoice by ID
+ * @param {string} id - Invoice ID
+ */
 export const getInvoice = async (id) => {
   try {
-    // Fetch invoice
-    const invoiceResponse = await supabaseApi.get('/invoices', {
-      params: {
-        select: '*,customer:customers(*)',
-        id: `eq.${id}`
-      }
-    })
+    const { data, error } = await supabase
+      .from('invoices')
+      .select(`
+        *,
+        customer:profiles(id, full_name, email),
+        items:invoice_items(*)
+      `)
+      .eq('id', id)
+      .single()
 
-    const invoice = invoiceResponse.data?.[0]
-    if (!invoice) return null
-
-    // Fetch invoice items
-    const itemsResponse = await supabaseApi.get('/invoice_items', {
-      params: {
-        select: '*',
-        invoice_id: `eq.${id}`
-      }
-    })
-
-    invoice.invoice_items = itemsResponse.data || []
-
-    return invoice
+    if (error) throw error
+    return data
   } catch (error) {
     console.error('getInvoice failed:', error)
     throw error
   }
 }
 
+/**
+ * Create a new invoice
+ * @param {Object} invoiceData - Invoice data
+ * @param {string} invoiceData.customer_id - Customer ID
+ * @param {Array} invoiceData.items - Invoice items
+ * @param {string} invoiceData.due_date - Due date
+ * @param {string} invoiceData.currency - Currency (USD/TRY)
+ * @param {number} invoiceData.tax_rate - Tax percentage
+ * @param {string} invoiceData.notes - Notes
+ */
 export const createInvoice = async (invoiceData) => {
-  const { invoice_items, ...invoiceFields } = invoiceData
-
   try {
-    console.log('Creating invoice with fields:', JSON.stringify(invoiceFields, null, 2))
+    const { data: { session } } = await supabase.auth.getSession()
 
-    // Create invoice
-    const invoiceResponse = await supabaseApi.post('/invoices', invoiceFields)
-    const invoice = invoiceResponse.data?.[0] || invoiceResponse.data
+    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(invoiceData),
+    })
 
-    console.log('Invoice created:', invoice)
+    const result = await response.json()
 
-    // Create invoice items if provided
-    if (invoice_items && invoice_items.length > 0) {
-      const itemsWithInvoiceId = invoice_items.map(item => ({
-        ...item,
-        invoice_id: invoice.id
-      }))
-      console.log('Creating invoice items:', itemsWithInvoiceId)
-      await supabaseApi.post('/invoice_items', itemsWithInvoiceId)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create invoice')
     }
 
-    return invoice
+    return result.invoice
   } catch (error) {
     console.error('createInvoice failed:', error)
-    console.error('Error response:', error.response?.data)
-    console.error('Error status:', error.response?.status)
     throw error
   }
 }
 
-export const updateInvoice = async (id, invoiceData) => {
-  const { invoice_items, ...invoiceFields } = invoiceData
-
+/**
+ * Pay an invoice
+ * @param {Object} paymentData - Payment data
+ * @param {string} paymentData.invoice_id - Invoice ID
+ * @param {string} paymentData.payment_method - Payment method (wallet, iyzico, paytr, etc.)
+ * @param {string} paymentData.transaction_id - Transaction ID from gateway
+ * @param {string} paymentData.gateway_response - Response from gateway
+ * @param {string} paymentData.notes - Payment notes
+ */
+export const payInvoice = async (paymentData) => {
   try {
-    // Update invoice
-    const response = await supabaseApi.patch('/invoices', invoiceFields, {
-      params: { id: `eq.${id}` }
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-pay`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(paymentData),
     })
 
-    // Update invoice items if provided
-    if (invoice_items && invoice_items.length > 0) {
-      // Delete existing items
-      await supabaseApi.delete('/invoice_items', {
-        params: { invoice_id: `eq.${id}` }
-      })
+    const result = await response.json()
 
-      // Create new items
-      const itemsWithInvoiceId = invoice_items.map(item => ({
-        ...item,
-        invoice_id: id
-      }))
-      await supabaseApi.post('/invoice_items', itemsWithInvoiceId)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to pay invoice')
     }
 
-    return response.data?.[0] || response.data
+    return {
+      invoice: result.invoice,
+      payment: result.payment,
+    }
   } catch (error) {
-    console.error('updateInvoice failed:', error)
-    console.error('Error response:', error.response?.data)
+    console.error('payInvoice failed:', error)
     throw error
   }
 }
 
-export const deleteInvoice = async (id) => {
+/**
+ * Get customer credit balance
+ * @param {string} customer_id - Customer ID
+ */
+export const getCustomerCredit = async (customer_id) => {
   try {
-    // Delete invoice items first
-    await supabaseApi.delete('/invoice_items', {
-      params: { invoice_id: `eq.${id}` }
+    const { data, error } = await supabase
+      .from('customer_credit')
+      .select('*')
+      .eq('customer_id', customer_id)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // Not found is OK
+      throw error
+    }
+
+    return data || { balance: 0, currency: 'USD' }
+  } catch (error) {
+    console.error('getCustomerCredit failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Add credit to customer wallet
+ * @param {string} customer_id - Customer ID
+ * @param {number} amount - Amount to add
+ * @param {string} currency - Currency
+ * @param {string} description - Description
+ */
+export const addCustomerCredit = async (customer_id, amount, currency = 'USD', description = '') => {
+  try {
+    // Get current balance
+    const currentCredit = await getCustomerCredit(customer_id)
+    const newBalance = (currentCredit?.balance || 0) + amount
+
+    // Upsert credit
+    const { error: creditError } = await supabase
+      .from('customer_credit')
+      .upsert({
+        customer_id,
+        balance: newBalance,
+        currency,
+      })
+
+    if (creditError) throw creditError
+
+    // Record transaction
+    const { error: transactionError } = await supabase
+      .from('credit_transactions')
+      .insert({
+        customer_id,
+        type: 'credit',
+        amount,
+        currency,
+        description: description || 'Credit added',
+        balance_after: newBalance,
+      })
+
+    if (transactionError) throw transactionError
+
+    return { balance: newBalance, currency }
+  } catch (error) {
+    console.error('addCustomerCredit failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Initialize iyzico payment
+ * @param {string} invoice_id - Invoice ID
+ * @param {string} return_url - URL to return after payment
+ */
+export const initializeIyzicoPayment = async (invoice_id, return_url = null) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/payment-iyzico-init`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({
+        invoice_id,
+        return_url: return_url || `${window.location.origin}/payment-callback`,
+      }),
     })
 
-    // Delete invoice
-    await supabaseApi.delete('/invoices', {
-      params: { id: `eq.${id}` }
-    })
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to initialize iyzico payment')
+    }
+
+    return result
   } catch (error) {
-    console.error('deleteInvoice failed:', error)
+    console.error('initializeIyzicoPayment failed:', error)
     throw error
   }
 }

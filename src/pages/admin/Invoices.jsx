@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices'
-import { useCustomers } from '@/hooks/useCustomers'
+import { Link } from 'react-router-dom'
+import { useInvoices, usePayInvoice } from '@/hooks/useInvoices'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Eye, FileText, RefreshCw, DollarSign, Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
-import InvoiceForm from '@/components/invoices/InvoiceForm'
-import InvoiceDetails from '@/components/invoices/InvoiceDetails'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Plus, Eye, FileText, RefreshCw, DollarSign, AlertCircle, CheckCircle2, CreditCard, Wallet } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -19,75 +25,35 @@ import {
 import { toast } from '@/lib/toast'
 
 export default function Invoices() {
-  const { data: invoices, isLoading, error, refetch } = useInvoices()
-  const { data: customers } = useCustomers()
-  const createInvoice = useCreateInvoice()
-  const updateInvoice = useUpdateInvoice()
-  const deleteInvoice = useDeleteInvoice()
+  const [statusFilter, setStatusFilter] = useState('')
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
 
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingInvoice, setEditingInvoice] = useState(null)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [viewingInvoice, setViewingInvoice] = useState(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const { data: invoicesData, isLoading, error, refetch } = useInvoices({
+    status: statusFilter || undefined,
+  })
+  const payInvoice = usePayInvoice()
 
-  const handleCreate = () => {
-    setEditingInvoice(null)
-    setFormOpen(true)
-  }
+  const invoices = invoicesData?.invoices || []
+  const total = invoicesData?.total || 0
 
-  const handleEdit = (invoice) => {
-    setEditingInvoice(invoice)
-    setFormOpen(true)
-  }
-
-  const handleView = (invoice) => {
-    setViewingInvoice(invoice)
-    setDetailsOpen(true)
-  }
-
-  const handleSubmit = async (data) => {
+  const handlePayInvoice = async (paymentMethod) => {
     try {
-      if (editingInvoice) {
-        await updateInvoice.mutateAsync({ id: editingInvoice.id, data })
-        toast.success('Fatura başarıyla güncellendi', {
-          description: `Fatura #${data.invoice_number} güncellendi`,
-          action: {
-            label: 'Görüntüle',
-            onClick: () => handleView(editingInvoice)
-          }
-        })
-      } else {
-        const result = await createInvoice.mutateAsync(data)
-        toast.success('Fatura başarıyla oluşturuldu', {
-          description: `Fatura #${data.invoice_number} oluşturuldu`,
-          action: {
-            label: 'Görüntüle',
-            onClick: () => handleView(result)
-          }
-        })
-      }
-      setFormOpen(false)
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Fatura kaydedilemedi', {
-        description: error.message
+      await payInvoice.mutateAsync({
+        invoice_id: selectedInvoice.id,
+        payment_method: paymentMethod,
       })
-    }
-  }
 
-  const handleDelete = async (id) => {
-    if (confirm('Bu faturayı silmek istediğinizden emin misiniz?')) {
-      try {
-        await deleteInvoice.mutateAsync(id)
-        toast.success('Fatura başarıyla silindi', {
-          description: 'Fatura kaydı sistemden kaldırıldı'
-        })
-      } catch (error) {
-        toast.error('Fatura silinemedi', {
-          description: error.message
-        })
-      }
+      toast.success('Fatura ödendi', {
+        description: `${selectedInvoice.invoice_number} numaralı fatura başarıyla ödendi`,
+      })
+
+      setPaymentModalOpen(false)
+      setSelectedInvoice(null)
+    } catch (error) {
+      toast.error('Ödeme başarısız', {
+        description: error.message,
+      })
     }
   }
 
@@ -119,25 +85,27 @@ export default function Invoices() {
 
   const getStatusBadge = (status) => {
     const config = {
-      paid: { variant: 'default', label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200' },
-      pending: { variant: 'secondary', label: 'Beklemede', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      overdue: { variant: 'destructive', label: 'Vadesi Geçti', className: 'bg-red-100 text-red-800 border-red-200' },
-      cancelled: { variant: 'secondary', label: 'İptal', className: 'bg-gray-100 text-gray-800 border-gray-200' },
+      paid: { label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200' },
+      unpaid: { label: 'Ödenmedi', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+      overdue: { label: 'Vadesi Geçti', className: 'bg-red-100 text-red-800 border-red-200' },
+      cancelled: { label: 'İptal', className: 'bg-gray-100 text-gray-800 border-gray-200' },
+      refunded: { label: 'İade', className: 'bg-blue-100 text-blue-800 border-blue-200' },
     }
-    const { label, className } = config[status]
+    const { label, className } = config[status] || config.unpaid
     return <Badge variant="outline" className={className}>{label}</Badge>
   }
 
-  // Calculate summary statistics
-  const totalRevenue = invoices?.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total_amount, 0) || 0
-  const pendingAmount = invoices?.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.total_amount, 0) || 0
-  const overdueAmount = invoices?.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.total_amount, 0) || 0
+  const formatCurrency = (amount, currency = 'USD') => {
+    if (currency === 'TRY') {
+      return `₺${amount.toFixed(2)}`
+    }
+    return `$${amount.toFixed(2)}`
+  }
 
-  // Filter invoices
-  const filteredInvoices = invoices?.filter(inv => {
-    if (statusFilter === 'all') return true
-    return inv.status === statusFilter
-  }) || []
+  // Calculate summary statistics
+  const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0)
+  const pendingAmount = invoices.filter(inv => inv.status === 'unpaid').reduce((sum, inv) => sum + inv.total, 0)
+  const overdueAmount = invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.total, 0)
 
   return (
     <div className="space-y-6">
@@ -148,9 +116,11 @@ export default function Invoices() {
             Tüm faturaları görüntüleyin ve yönetin
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Fatura
+        <Button asChild>
+          <Link to="/admin/invoice/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Fatura
+          </Link>
         </Button>
       </div>
 
@@ -159,36 +129,36 @@ export default function Invoices() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Gelir</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue, invoices[0]?.currency)}</div>
             <p className="text-xs text-muted-foreground">
-              {invoices?.filter(inv => inv.status === 'paid').length || 0} ödenen fatura
+              {invoices.filter(inv => inv.status === 'paid').length} ödenen fatura
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Bekleyen Ödemeler</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(pendingAmount)}</div>
+            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(pendingAmount, invoices[0]?.currency)}</div>
             <p className="text-xs text-muted-foreground">
-              {invoices?.filter(inv => inv.status === 'pending').length || 0} bekleyen fatura
+              {invoices.filter(inv => inv.status === 'unpaid').length} bekleyen fatura
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Vadesi Geçen</CardTitle>
-            <FileText className="h-4 w-4 text-destructive" />
+            <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrency(overdueAmount)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(overdueAmount, invoices[0]?.currency)}</div>
             <p className="text-xs text-muted-foreground">
-              {invoices?.filter(inv => inv.status === 'overdue').length || 0} vadesi geçmiş fatura
+              {invoices.filter(inv => inv.status === 'overdue').length} vadesi geçmiş fatura
             </p>
           </CardContent>
         </Card>
@@ -200,21 +170,18 @@ export default function Invoices() {
             <div>
               <CardTitle>Fatura Listesi</CardTitle>
               <CardDescription>
-                {statusFilter === 'all'
-                  ? `Toplam ${invoices?.length || 0} fatura`
-                  : `${filteredInvoices.length} fatura (${invoices?.length || 0} toplam)`
-                }
+                Toplam {total} fatura
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Tüm Durumlar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tüm Faturalar</SelectItem>
+                  <SelectItem value="">Tüm Faturalar</SelectItem>
                   <SelectItem value="paid">Ödenenler</SelectItem>
-                  <SelectItem value="pending">Bekleyenler</SelectItem>
+                  <SelectItem value="unpaid">Ödenmeyenler</SelectItem>
                   <SelectItem value="overdue">Vadesi Geçenler</SelectItem>
                   <SelectItem value="cancelled">İptal Edilenler</SelectItem>
                 </SelectContent>
@@ -226,16 +193,16 @@ export default function Invoices() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredInvoices.length === 0 ? (
+          {invoices.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">
-                {statusFilter === 'all'
-                  ? 'Henüz fatura bulunmuyor'
-                  : 'Bu filtreye uygun fatura bulunamadı'
+                {statusFilter
+                  ? 'Bu filtreye uygun fatura bulunamadı'
+                  : 'Henüz fatura bulunmuyor'
                 }
               </p>
-              {statusFilter === 'all' && (
+              {!statusFilter && (
                 <p className="text-sm mt-1">Yeni bir fatura oluşturun</p>
               )}
             </div>
@@ -245,7 +212,7 @@ export default function Invoices() {
                 <TableRow>
                   <TableHead>Fatura No</TableHead>
                   <TableHead>Müşteri</TableHead>
-                  <TableHead>Fatura Tarihi</TableHead>
+                  <TableHead>Oluşturma</TableHead>
                   <TableHead>Vade Tarihi</TableHead>
                   <TableHead>Ödeme Tarihi</TableHead>
                   <TableHead className="text-right">Tutar</TableHead>
@@ -254,7 +221,7 @@ export default function Invoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice) => (
+                {invoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">
                       {invoice.invoice_number}
@@ -262,18 +229,15 @@ export default function Invoices() {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {invoice.customer?.profile?.full_name || invoice.customer?.full_name || '-'}
+                          {invoice.customer?.full_name || '-'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {invoice.customer?.customer_code}
+                          {invoice.customer?.email}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        {formatDate(invoice.invoice_date)}
-                      </div>
+                      {formatDate(invoice.created_at)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -284,20 +248,17 @@ export default function Invoices() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {invoice.payment_date ? (
+                      {invoice.paid_date ? (
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                          {formatDate(invoice.payment_date)}
+                          {formatDate(invoice.paid_date)}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5 font-semibold">
-                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                        {formatCurrency(invoice.total_amount)}
-                      </div>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(invoice.total, invoice.currency)}
                     </TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell className="text-right">
@@ -306,26 +267,25 @@ export default function Invoices() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleView(invoice)}
+                          asChild
                         >
-                          <Eye className="h-4 w-4" />
+                          <Link to={`/admin/invoice/${invoice.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(invoice)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleDelete(invoice.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {invoice.status === 'unpaid' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setSelectedInvoice(invoice)
+                              setPaymentModalOpen(true)
+                            }}
+                          >
+                            <CreditCard className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -336,19 +296,46 @@ export default function Invoices() {
         </CardContent>
       </Card>
 
-      <InvoiceForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        invoice={editingInvoice}
-        customers={customers}
-        onSubmit={handleSubmit}
-      />
-
-      <InvoiceDetails
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-        invoice={viewingInvoice}
-      />
+      {/* Payment Modal */}
+      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Faturayı Öde</DialogTitle>
+            <DialogDescription>
+              {selectedInvoice?.invoice_number} numaralı faturayı nasıl ödemek istersiniz?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg bg-muted p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Ödenecek Tutar:</span>
+                <span className="text-2xl font-bold">
+                  {selectedInvoice && formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => handlePayInvoice('wallet')}
+              disabled={payInvoice.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Wallet className="h-4 w-4 mr-2" />
+              Wallet ile Öde
+            </Button>
+            <Button
+              onClick={() => handlePayInvoice('bank_transfer')}
+              disabled={payInvoice.isPending}
+              className="w-full sm:w-auto"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Manuel Ödeme İşaretle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -150,12 +150,108 @@ serve(async (req) => {
       )
     }
 
+    // Create domain orders and invoice
+    const domainOrderIds = []
+    let invoiceId = null
+
+    for (const domain of domains) {
+      // Create domain order record
+      const { data: domainOrder, error: orderError } = await supabaseClient
+        .from('domain_orders')
+        .insert({
+          customer_id: user.id,
+          domain: `${domain.sld}.${domain.tld}`,
+          sld: domain.sld,
+          tld: domain.tld,
+          period: domain.period || 1,
+          status: 'pending',
+          registrant_contact: domain.contacts,
+          nameservers: domain.nameservers,
+          price: 0, // Price will be updated from Resellers Panel response
+          currency: currency,
+          registrar_order_id: responseData.temporary_id,
+        })
+        .select()
+        .single()
+
+      if (!orderError && domainOrder) {
+        domainOrderIds.push(domainOrder.id)
+      }
+    }
+
+    // Create invoice for domains
+    const invoiceItems = domains.map(domain => ({
+      type: 'domain',
+      description: `Domain Registration - ${domain.sld}.${domain.tld} (${domain.period} year${domain.period > 1 ? 's' : ''})`,
+      quantity: domain.period,
+      unit_price: 0, // Will be updated with actual price
+      service_type: 'domain',
+    }))
+
+    const subtotal = 0 // Calculate from actual prices
+    const { data: invoice, error: invoiceError } = await supabaseClient
+      .from('invoices')
+      .insert({
+        customer_id: user.id,
+        status: payment_method === 'Wallet' ? 'paid' : 'unpaid',
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        subtotal,
+        tax: 0,
+        total: subtotal,
+        currency,
+        payment_method: payment_method === 'Wallet' ? 'wallet' : null,
+        notes: `Domain registration order: ${responseData.temporary_id}`,
+      })
+      .select()
+      .single()
+
+    if (!invoiceError && invoice) {
+      invoiceId = invoice.id
+
+      // Insert invoice items
+      const itemsToInsert = invoiceItems.map(item => ({
+        ...item,
+        invoice_id: invoice.id,
+        amount: item.quantity * item.unit_price,
+      }))
+
+      await supabaseClient
+        .from('invoice_items')
+        .insert(itemsToInsert)
+
+      // If wallet payment, record payment
+      if (payment_method === 'Wallet') {
+        await supabaseClient
+          .from('payments')
+          .insert({
+            customer_id: user.id,
+            invoice_id: invoice.id,
+            amount: subtotal,
+            currency,
+            payment_method: 'wallet',
+            status: 'completed',
+            notes: `Domain registration payment`,
+          })
+
+        // Update invoice as paid
+        await supabaseClient
+          .from('invoices')
+          .update({
+            status: 'paid',
+            paid_date: new Date().toISOString(),
+          })
+          .eq('id', invoice.id)
+      }
+    }
+
     // Success without redirect (e.g., using Wallet)
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Domain registration order submitted successfully',
         order_id: responseData.temporary_id,
+        invoice_id: invoiceId,
+        domain_orders: domainOrderIds,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

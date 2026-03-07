@@ -72,35 +72,39 @@ export const getDomainPricing = async () => {
 }
 
 /**
- * Register a new domain
- * @param {string} domainName - Full domain name (e.g., 'example.com')
- * @param {number} period - Registration period in years
- * @param {Object} contacts - Contact information for domain registration
- * @param {Array<string>} nameServers - Name servers
- * @param {boolean} privacyProtection - Enable WHOIS privacy protection
+ * Register domains (bulk registration)
+ * @param {Array} domains - Array of domain objects with {sld, tld, period, contacts, nameservers}
+ * @param {string} currency - Currency for payment (USD or TRY)
+ * @param {string} payment_method - Payment method (e.g., 'Wallet', 'Credit Card')
+ * @param {string} return_url - URL to return after successful payment
+ * @param {string} cancel_url - URL to return if payment is cancelled
  */
-export const registerDomain = async (
-  domainName,
-  period = 1,
-  contacts,
-  nameServers = ['ns1.thelumastudios.com', 'ns2.thelumastudios.com'],
-  privacyProtection = true
+export const registerDomains = async (
+  domains,
+  currency = 'USD',
+  payment_method = 'Wallet',
+  return_url = null,
+  cancel_url = null
 ) => {
   try {
     const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      throw new Error('Kullanıcı oturumu bulunamadı. Lütfen giriş yapın.')
+    }
 
     const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/domain-register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        domainName,
-        period,
-        contacts,
-        nameServers,
-        privacyProtection,
+        domains,
+        currency,
+        payment_method,
+        return_url,
+        cancel_url,
       }),
     })
 
@@ -112,9 +116,34 @@ export const registerDomain = async (
 
     return result
   } catch (error) {
-    console.error('registerDomain failed:', error)
+    console.error('registerDomains failed:', error)
     throw error
   }
+}
+
+/**
+ * Register a single domain (convenience wrapper)
+ * @param {string} domainName - Full domain name (e.g., 'example.com')
+ * @param {number} period - Registration period in years
+ * @param {Object} contacts - Contact information for domain registration
+ * @param {Array<string>} nameservers - Name servers
+ */
+export const registerDomain = async (
+  domainName,
+  period = 1,
+  contacts,
+  nameservers = ['ns1.thelumastudios.com', 'ns2.thelumastudios.com']
+) => {
+  const [sld, ...tldParts] = domainName.split('.')
+  const tld = tldParts.join('.')
+
+  return registerDomains([{
+    sld,
+    tld,
+    period,
+    contacts,
+    nameservers,
+  }])
 }
 
 /**

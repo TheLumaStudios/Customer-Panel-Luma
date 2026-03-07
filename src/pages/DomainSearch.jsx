@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,15 +9,17 @@ import { Search, ShoppingCart, Check, X, Loader2, Globe, Star, DollarSign, Trend
 import { useDomainSearch, useDomainPricing } from '@/hooks/useDomainSearch'
 import { useExchangeRate } from '@/hooks/useCurrency'
 import { convertUsdToTry } from '@/lib/api/currency'
+import { useCart } from '@/contexts/CartContext'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
 export default function DomainSearch() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedExtensions, setSelectedExtensions] = useState(['com', 'net', 'org'])
   const [searchResults, setSearchResults] = useState([])
-  const [cart, setCart] = useState([])
-  const [currency, setCurrency] = useState('TRY') // 'USD' or 'TRY'
+  const { cart, currency, setCurrency, addToCart, removeFromCart, isInCart, cartTotal } = useCart()
 
   const PROFIT_MARGIN_PERCENT = 10 // %10 kar marjı
 
@@ -115,26 +118,28 @@ export default function DomainSearch() {
     )
   }
 
-  const addToCart = (result) => {
-    if (cart.some(item => item.domain === result.domain)) {
+  const handleAddToCart = (result) => {
+    if (isInCart(result.domain)) {
       toast.error('Bu domain sepette zaten var')
       return
     }
 
-    setCart([...cart, result])
+    // Add tryPrice for TRY currency
+    const itemWithPricing = {
+      ...result,
+      tryPrice: currency === 'TRY' && exchangeRate
+        ? parseFloat(convertUsdToTry(result.price, exchangeRate.sellRate))
+        : null
+    }
+
+    addToCart(itemWithPricing)
     toast.success('Sepete eklendi', {
-      description: result.domain,
-      action: {
-        label: 'Sepete Git',
-        onClick: () => {
-          // Navigate to cart
-        }
-      }
+      description: result.domain
     })
   }
 
-  const removeFromCart = (domain) => {
-    setCart(cart.filter(item => item.domain !== domain))
+  const handleRemoveFromCart = (domain) => {
+    removeFromCart(domain)
     toast.success('Sepetten çıkarıldı')
   }
 
@@ -320,11 +325,11 @@ export default function DomainSearch() {
                           <p className="text-xs text-muted-foreground">/yıl</p>
                         </div>
                         <Button
-                          onClick={() => addToCart(result)}
-                          disabled={cart.some(item => item.domain === result.domain)}
+                          onClick={() => handleAddToCart(result)}
+                          disabled={isInCart(result.domain)}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          {cart.some(item => item.domain === result.domain) ? 'Sepette' : 'Sepete Ekle'}
+                          {isInCart(result.domain) ? 'Sepette' : 'Sepete Ekle'}
                         </Button>
                       </>
                     )}
@@ -345,7 +350,7 @@ export default function DomainSearch() {
               Sepet ({cart.length} domain)
             </CardTitle>
             <CardDescription>
-              Toplam: {formatPrice(cart.reduce((sum, item) => sum + item.price, 0))}
+              Toplam: {formatPrice(cartTotal)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -364,7 +369,7 @@ export default function DomainSearch() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeFromCart(item.domain)}
+                      onClick={() => handleRemoveFromCart(item.domain)}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -376,9 +381,31 @@ export default function DomainSearch() {
             <div className="flex justify-between items-center pt-4 border-t">
               <div>
                 <p className="text-sm text-muted-foreground">Toplam (1 yıl)</p>
-                <p className="text-2xl font-bold">{formatPrice(cart.reduce((sum, item) => sum + item.price, 0))}</p>
+                <p className="text-2xl font-bold">{formatPrice(cartTotal)}</p>
               </div>
-              <Button size="lg">
+              <Button
+                size="lg"
+                onClick={() => {
+                  // Prepare cart with all necessary data
+                  const cartWithDetails = cart.map(item => ({
+                    ...item,
+                    sld: item.domain.split('.')[0],
+                    tld: item.domain.split('.').slice(1).join('.'),
+                    tryPrice: currency === 'TRY' && exchangeRate
+                      ? parseFloat(convertUsdToTry(item.price, exchangeRate.sellRate))
+                      : null
+                  }))
+
+                  // Determine path based on current route
+                  const checkoutPath = location.pathname.startsWith('/admin')
+                    ? '/admin/domain-checkout'
+                    : '/domain-checkout'
+
+                  navigate(checkoutPath, {
+                    state: { cart: cartWithDetails, currency }
+                  })
+                }}
+              >
                 <ShoppingCart className="h-4 w-4 mr-2" />
                 Ödemeye Geç
               </Button>
