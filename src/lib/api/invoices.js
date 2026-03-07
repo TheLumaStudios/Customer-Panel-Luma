@@ -158,16 +158,19 @@ export const getCustomerCredit = async (customer_id) => {
       .from('customer_credit')
       .select('*')
       .eq('customer_id', customer_id)
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single to avoid 406 error
 
-    if (error && error.code !== 'PGRST116') { // Not found is OK
+    if (error) {
+      console.error('getCustomerCredit error:', error)
       throw error
     }
 
-    return data || { balance: 0, currency: 'USD' }
+    // Return default if no record exists
+    return data || { balance: 0, currency: 'USD', customer_id }
   } catch (error) {
     console.error('getCustomerCredit failed:', error)
-    throw error
+    // Return default on error to prevent UI crashes
+    return { balance: 0, currency: 'USD', customer_id }
   }
 }
 
