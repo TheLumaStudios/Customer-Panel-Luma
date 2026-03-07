@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
+import Breadcrumbs from './Breadcrumbs'
 
 export default function Header() {
   // Mock notifications - In production, fetch from API
@@ -45,14 +46,9 @@ export default function Header() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">
-          Hoş Geldiniz
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Panel yönetim sistemi
-        </p>
+    <header className="border-b border-border bg-card px-6 flex items-center justify-between min-h-16 py-3">
+      <div className="flex flex-col gap-2">
+        <Breadcrumbs />
       </div>
 
       <div className="flex items-center gap-4">

@@ -1,8 +1,19 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import CommandPalette from './CommandPalette'
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export default function MainLayout() {
+  const [helpOpen, setHelpOpen] = useState(false)
+
+  // Enable global keyboard shortcuts
+  useKeyboardShortcuts({
+    onHelpOpen: () => setHelpOpen(true)
+  })
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -12,6 +23,8 @@ export default function MainLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandPalette />
+      <KeyboardShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   )
 }

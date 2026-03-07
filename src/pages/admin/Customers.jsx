@@ -4,6 +4,7 @@ import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer }
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -13,6 +14,11 @@ import SendPasswordModal from '@/components/customers/SendPasswordModal'
 import { sendSMS } from '@/lib/api/sms'
 import { prepareCustomerAuth, sendPasswordSMS } from '@/lib/api/auth'
 import { toast } from '@/lib/toast'
+import { useTableSelection } from '@/hooks/useTableSelection'
+import BulkActionBar, { commonBulkActions } from '@/components/tables/BulkActionBar'
+import AdvancedFilter from '@/components/tables/AdvancedFilter'
+import FilterChips from '@/components/tables/FilterChips'
+import ExportButton, { commonExportColumns } from '@/components/tables/ExportButton'
 
 export default function Customers() {
   const navigate = useNavigate()
@@ -28,6 +34,83 @@ export default function Customers() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [passwordCustomer, setPasswordCustomer] = useState(null)
   const [passwordData, setPasswordData] = useState(null)
+
+  // Filtering
+  const [filters, setFilters] = useState([])
+
+  // Filter columns configuration
+  const filterColumns = [
+    { label: 'Müşteri Kodu', value: 'customer_code', type: 'text' },
+    { label: 'Ad Soyad', value: 'full_name', type: 'text' },
+    { label: 'E-posta', value: 'email', type: 'text' },
+    { label: 'Telefon', value: 'phone', type: 'text' },
+    {
+      label: 'Durum',
+      value: 'status',
+      type: 'select',
+      options: [
+        { label: 'Aktif', value: 'active' },
+        { label: 'Pasif', value: 'inactive' },
+        { label: 'Askıda', value: 'suspended' },
+      ]
+    },
+    { label: 'Kayıt Tarihi', value: 'created_at', type: 'date' },
+  ]
+
+  // Apply filters to customers
+  const filteredCustomers = customers?.filter(customer => {
+    if (filters.length === 0) return true
+
+    return filters.every(filter => {
+      const value = customer[filter.column]?.toString().toLowerCase() || ''
+      const filterValue = filter.value?.toString().toLowerCase() || ''
+
+      const column = filterColumns.find(c => c.value === filter.column)
+
+      if (column?.type === 'text') {
+        switch (filter.operator) {
+          case 'contains':
+            return value.includes(filterValue)
+          case 'equals':
+            return value === filterValue
+          case 'startsWith':
+            return value.startsWith(filterValue)
+          case 'endsWith':
+            return value.endsWith(filterValue)
+          default:
+            return true
+        }
+      }
+
+      if (column?.type === 'select') {
+        if (filter.operator === 'is') {
+          return customer[filter.column] === filter.value
+        } else if (filter.operator === 'isNot') {
+          return customer[filter.column] !== filter.value
+        }
+      }
+
+      if (column?.type === 'date') {
+        const itemDate = new Date(customer[filter.column])
+        const filterDate = new Date(filter.value)
+
+        if (filter.operator === 'is') {
+          return itemDate.toDateString() === filterDate.toDateString()
+        } else if (filter.operator === 'before') {
+          return itemDate < filterDate
+        } else if (filter.operator === 'after') {
+          return itemDate > filterDate
+        } else if (filter.operator === 'between' && filter.value?.start && filter.value?.end) {
+          return itemDate >= new Date(filter.value.start) && itemDate <= new Date(filter.value.end)
+        }
+      }
+
+      return true
+    })
+  }) || []
+
+  // Bulk selection
+  const selection = useTableSelection(filteredCustomers)
 
   const handleCreate = () => {
     setEditingCustomer(null)
@@ -116,6 +199,32 @@ export default function Customers() {
           description: error.message
         })
       }
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const selectedCustomers = selection.getSelectedItems()
+    const count = selectedCustomers.length
+
+    if (!confirm(`${count} müşteriyi silmek istediğinizden emin misiniz?`)) {
+      return
+    }
+
+    try {
+      // Delete all selected customers in parallel
+      await Promise.all(
+        selectedCustomers.map(customer => deleteCustomer.mutateAsync(customer.id))
+      )
+
+      toast.success(`${count} müşteri başarıyla silindi`, {
+        description: 'Seçili müşteriler sistemden kaldırıldı'
+      })
+
+      selection.deselectAll()
+    } catch (error) {
+      toast.error('Toplu silme işlemi başarısız', {
+        description: error.message
+      })
     }
   }
 
@@ -231,6 +340,11 @@ export default function Customers() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ExportButton
+            data={filteredCustomers}
+            columns={commonExportColumns.customers}
+            filename={`musteriler-${new Date().toISOString().split('T')[0]}`}
+          />
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Yenile
@@ -246,18 +360,64 @@ export default function Customers() {
         <CardHeader>
           <CardTitle>Müşteri Listesi</CardTitle>
           <CardDescription>
-            Toplam {customers?.length || 0} müşteri
+            {filters.length > 0 ? (
+              <>
+                {filteredCustomers.length} / {customers?.length || 0} müşteri gösteriliyor
+              </>
+            ) : (
+              <>Toplam {customers?.length || 0} müşteri</>
+            )}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {customers?.length === 0 ? (
+        <CardContent className="space-y-4">
+          <AdvancedFilter
+            columns={filterColumns}
+            onFilterChange={setFilters}
+          />
+
+          {filters.length > 0 && (
+            <FilterChips
+              filters={filters}
+              columns={filterColumns}
+              onRemove={(filterId) => {
+                setFilters(filters.filter(f => f.id !== filterId))
+              }}
+            />
+          )}
+
+          <BulkActionBar
+            selectedCount={selection.selectedCount}
+            onDeselectAll={selection.deselectAll}
+            actions={[
+              commonBulkActions.delete(handleBulkDelete),
+              commonBulkActions.export(() => {
+                const selectedCustomers = selection.getSelectedItems()
+                toast.success('Seçili müşteriler dışa aktarılıyor...', {
+                  description: `${selectedCustomers.length} müşteri`
+                })
+              }),
+            ]}
+          />
+
+          {filteredCustomers?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Henüz müşteri bulunmuyor. Yeni bir müşteri ekleyin.
+              {filters.length > 0 ? (
+                <>Filtre kriterlerinize uygun müşteri bulunamadı.</>
+              ) : (
+                <>Henüz müşteri bulunmuyor. Yeni bir müşteri ekleyin.</>
+              )}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selection.isAllSelected}
+                      onCheckedChange={selection.toggleSelectAll}
+                      aria-label="Tümünü seç"
+                    />
+                  </TableHead>
                   <TableHead>Müşteri Kodu</TableHead>
                   <TableHead>Ad Soyad</TableHead>
                   <TableHead>E-posta</TableHead>
@@ -268,12 +428,21 @@ export default function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers?.map((customer) => (
+                {filteredCustomers?.map((customer, index) => (
                   <TableRow
                     key={customer.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate(`/admin/customers/${customer.id}`)}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selection.isSelected(customer.id)}
+                        onCheckedChange={(checked) => {
+                          selection.toggleSelection(customer.id, index, false)
+                        }}
+                        aria-label={`${customer.full_name || customer.customer_code} seç`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {customer.customer_code}
                     </TableCell>

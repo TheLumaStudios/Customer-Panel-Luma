@@ -24,6 +24,7 @@ import MyVDS from '@/pages/customer/MyVDS'
 import MyInvoices from '@/pages/customer/MyInvoices'
 import MyTickets from '@/pages/customer/MyTickets'
 import Profile from '@/pages/customer/Profile'
+import DomainSearch from '@/pages/DomainSearch'
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="customers" element={<Customers />} />
             <Route path="customers/:id" element={<CustomerDetails />} />
+            <Route path="domain-search" element={<DomainSearch />} />
             <Route path="domains" element={<Domains />} />
             <Route path="hosting" element={<Hosting />} />
             <Route path="hosting-packages" element={<HostingPackages />} />
@@ -66,6 +68,7 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<CustomerDashboard />} />
+            <Route path="domain-search" element={<DomainSearch />} />
             <Route path="domains" element={<MyDomains />} />
             <Route path="hosting" element={<MyHosting />} />
             <Route path="vds" element={<MyVDS />} />

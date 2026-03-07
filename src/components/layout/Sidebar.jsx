@@ -13,12 +13,14 @@ import {
   Settings,
   LogOut,
   Monitor,
-  Cpu
+  Cpu,
+  Search
 } from 'lucide-react'
 
 const adminMenuItems = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Müşteriler', path: '/admin/customers', icon: Users },
+  { name: 'Domain Ara', path: '/admin/domain-search', icon: Search },
   { name: 'Domainler', path: '/admin/domains', icon: Globe },
   { name: 'Hosting', path: '/admin/hosting', icon: Server },
   { name: 'Hosting Paketleri', path: '/admin/hosting-packages', icon: Package },
@@ -31,6 +33,7 @@ const adminMenuItems = [
 
 const customerMenuItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Domain Ara', path: '/domain-search', icon: Search },
   { name: 'Domainlerim', path: '/domains', icon: Globe },
   { name: 'Hostingim', path: '/hosting', icon: Server },
   { name: 'VDS / VPS', path: '/vds', icon: Cpu },
