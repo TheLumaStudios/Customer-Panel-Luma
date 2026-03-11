@@ -101,6 +101,21 @@ serve(async (req) => {
     if (result.status === 'success' && result.paymentStatus === 'SUCCESS') {
       console.log('✅ Payment successful')
 
+      // Sistem ayarlarını al
+      const { data: settings } = await supabaseClient
+        .from('system_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['iyzico_invoice_type', 'iyzico_payment_method', 'iyzico_official_invoice'])
+
+      const settingsMap = settings?.reduce((acc: any, setting: any) => {
+        acc[setting.setting_key] = setting.setting_value
+        return acc
+      }, {}) || {}
+
+      const invoiceType = settingsMap['iyzico_invoice_type'] || 'Mükerrer 20/B'
+      const paymentMethod = settingsMap['iyzico_payment_method'] || 'İyzico Kredi Kartı'
+      const isOfficialInvoice = settingsMap['iyzico_official_invoice'] === 'true'
+
       // Update payment
       await supabaseClient
         .from('payments')
@@ -116,8 +131,10 @@ serve(async (req) => {
         .update({
           status: 'paid',
           paid_date: new Date().toISOString(),
-          payment_method: 'iyzico',
+          payment_method: paymentMethod,
+          invoice_type: isOfficialInvoice ? 'official' : 'proforma',
           transaction_id: result.paymentId,
+          notes: invoiceType,
         })
         .eq('id', payment.invoice_id)
 

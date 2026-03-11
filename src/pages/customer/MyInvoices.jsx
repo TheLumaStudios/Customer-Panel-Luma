@@ -102,10 +102,21 @@ export default function MyInvoices() {
   }
 
   const formatCurrency = (amount, currency = 'USD') => {
+    const value = amount || 0
     if (currency === 'TRY') {
-      return `₺${amount.toFixed(2)}`
+      return `₺${value.toFixed(2)}`
     }
-    return `$${amount.toFixed(2)}`
+    return `$${value.toFixed(2)}`
+  }
+
+  // Helper to calculate invoice total
+  const getInvoiceTotal = (invoice) => {
+    if (invoice.total && invoice.total > 0) return invoice.total
+    // Calculate from items if total is not set
+    const itemsTotal = invoice.items?.reduce((sum, item) => {
+      return sum + ((item.quantity || 1) * (item.unit_price || 0))
+    }, 0) || 0
+    return itemsTotal + (invoice.tax || 0)
   }
 
   const getStatusBadge = (status) => {
@@ -244,7 +255,7 @@ export default function MyInvoices() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {formatCurrency(invoice.total, invoice.currency)}
+                      {formatCurrency(getInvoiceTotal(invoice), invoice.currency)}
                     </TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell className="text-right">

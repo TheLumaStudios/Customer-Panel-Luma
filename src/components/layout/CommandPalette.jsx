@@ -33,7 +33,8 @@ export default function CommandPalette() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { data: customers } = useCustomers()
-  const { data: invoices } = useInvoices()
+  const { data: invoicesData } = useInvoices()
+  const invoices = invoicesData?.invoices || []
 
   const isAdmin = profile?.role === 'admin'
 

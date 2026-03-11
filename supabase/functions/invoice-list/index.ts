@@ -16,6 +16,14 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization')!
+
+    // Create admin client for operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Verify user with auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -23,19 +31,28 @@ serve(async (req) => {
     )
 
     // Get user from auth token
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    if (!user) {
-      throw new Error('Unauthorized')
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
-    // Check user role
-    const { data: profile } = await supabaseClient
+    // Check user role using admin client
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
     const isAdmin = profile?.role === 'admin'
+    const isEmployee = profile?.role === 'employee'
+    const isCustomer = profile?.role === 'customer'
 
     // Parse query parameters
     const url = new URL(req.url)
@@ -44,22 +61,23 @@ serve(async (req) => {
     const limit = parseInt(url.searchParams.get('limit') || '50')
     const offset = parseInt(url.searchParams.get('offset') || '0')
 
-    // Build query
-    let query = supabaseClient
+    // Build query using admin client (bypasses RLS)
+    let query = supabaseAdmin
       .from('invoices')
       .select(`
         *,
-        customer:profiles(id, full_name, email),
-        items:invoice_items(*)
+        invoice_items(*)
       `, { count: 'exact' })
 
     // Filter by customer
-    if (isAdmin && customer_id) {
+    if ((isAdmin || isEmployee) && customer_id) {
+      // Admins and employees can filter by specific customer
       query = query.eq('customer_id', customer_id)
-    } else if (!isAdmin) {
-      // Regular users can only see their own invoices
+    } else if (isCustomer) {
+      // Regular customers can only see their own invoices
       query = query.eq('customer_id', user.id)
     }
+    // If admin/employee without customer_id filter, show all invoices
 
     // Filter by status
     if (status) {
@@ -77,10 +95,24 @@ serve(async (req) => {
       throw error
     }
 
+    // Fetch customer details for each invoice from customers table
+    const customerIds = [...new Set(invoices?.map(inv => inv.customer_id) || [])]
+    const { data: customers } = await supabaseAdmin
+      .from('customers')
+      .select('id, full_name, email, customer_code')
+      .in('id', customerIds)
+
+    // Map customers to invoices
+    const invoicesWithCustomers = invoices?.map(invoice => ({
+      ...invoice,
+      items: invoice.invoice_items,
+      customer: customers?.find(c => c.id === invoice.customer_id) || null
+    })) || []
+
     return new Response(
       JSON.stringify({
         success: true,
-        invoices,
+        invoices: invoicesWithCustomers,
         total: count,
         limit,
         offset,

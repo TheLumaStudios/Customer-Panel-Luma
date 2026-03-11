@@ -154,7 +154,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Müşteri Kodu *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="CUST-12345" className="font-mono" />
+                        <Input {...field} placeholder="CUST-12345" className="font-mono bg-white border-gray-300" />
                       </FormControl>
                       <FormDescription className="text-xs">
                         Benzersiz müşteri tanımlama kodu
@@ -172,7 +172,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                       <FormLabel>Hesap Durumu *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-white border-gray-300">
                             <SelectValue placeholder="Durum seçiniz" />
                           </SelectTrigger>
                         </FormControl>
@@ -213,7 +213,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Ad Soyad / Şirket Yetkili *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Ahmet Yılmaz" />
+                        <Input {...field} placeholder="Ahmet Yılmaz" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -229,7 +229,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                       <FormControl>
                         <div className="relative">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input {...field} placeholder="ABC Teknoloji A.Ş." className="pl-10" />
+                          <Input {...field} placeholder="ABC Teknoloji A.Ş." className="pl-10 bg-white border-gray-300" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -246,7 +246,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>TC Kimlik No</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="12345678901" maxLength={11} className="font-mono" />
+                        <Input {...field} placeholder="12345678901" maxLength={11} className="font-mono bg-white border-gray-300" />
                       </FormControl>
                       <FormDescription className="text-xs">
                         Bireysel müşteriler için
@@ -265,7 +265,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                       <FormControl>
                         <div className="relative">
                           <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input {...field} placeholder="1234567890" maxLength={10} className="pl-10 font-mono" />
+                          <Input {...field} placeholder="1234567890" maxLength={10} className="pl-10 font-mono bg-white border-gray-300" />
                         </div>
                       </FormControl>
                       <FormDescription className="text-xs">
@@ -283,7 +283,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Vergi Dairesi</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Kadıköy" />
+                        <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -313,7 +313,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                             {...field}
                             type="email"
                             placeholder="ornek@email.com"
-                            className="pl-10"
+                            className="pl-10 bg-white border-gray-300"
                           />
                         </div>
                       </FormControl>
@@ -337,7 +337,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                           <Input
                             {...field}
                             placeholder="0555 123 45 67"
-                            className="pl-10"
+                            className="pl-10 bg-white border-gray-300"
                           />
                         </div>
                       </FormControl>
@@ -353,7 +353,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Fax</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="0212 345 67 89" />
+                        <Input {...field} placeholder="0212 345 67 89" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -372,7 +372,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                           <Input
                             {...field}
                             placeholder="www.example.com"
-                            className="pl-10"
+                            className="pl-10 bg-white border-gray-300"
                           />
                         </div>
                       </FormControl>
@@ -397,7 +397,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                   <FormItem>
                     <FormLabel>Adres</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} />
+                      <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} className="bg-white border-gray-300" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -412,7 +412,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>İl</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="İstanbul" />
+                        <Input {...field} placeholder="İstanbul" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -426,7 +426,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>İlçe</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Kadıköy" />
+                        <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -440,7 +440,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Posta Kodu</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="34000" />
+                        <Input {...field} placeholder="34000" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -454,7 +454,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                     <FormItem>
                       <FormLabel>Ülke</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Türkiye" />
+                        <Input {...field} placeholder="Türkiye" className="bg-white border-gray-300" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -583,7 +583,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
                   <FormItem>
                     <FormLabel>İç Notlar</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Müşteri hakkında özel notlar, hatırlatmalar..." rows={3} />
+                      <Textarea {...field} placeholder="Müşteri hakkında özel notlar, hatırlatmalar..." rows={3} className="bg-white border-gray-300" />
                     </FormControl>
                     <FormDescription className="text-xs">
                       Bu notlar sadece admin tarafından görülebilir

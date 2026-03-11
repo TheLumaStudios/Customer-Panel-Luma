@@ -34,7 +34,12 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
 
   if (requiredRole && profile?.role && profile.role !== requiredRole) {
     console.log('Wrong role, redirecting:', profile.role, 'required:', requiredRole)
-    const redirectPath = profile.role === 'admin' ? '/admin/dashboard' : '/dashboard'
+    let redirectPath = '/dashboard'
+    if (profile.role === 'admin') {
+      redirectPath = '/admin/dashboard'
+    } else if (profile.role === 'employee') {
+      redirectPath = '/employee/dashboard'
+    }
     return <Navigate to={redirectPath} replace />
   }
 

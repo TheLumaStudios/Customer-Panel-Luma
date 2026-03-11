@@ -6,14 +6,33 @@ import { supabase } from '@/lib/supabase'
  */
 export const getAddresses = async (customer_id = null) => {
   try {
+    let finalCustomerId = customer_id
+
+    // If no customer_id provided, get current user's customer ID
+    if (!finalCustomerId) {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', user.email)
+          .single()
+
+        if (customer) {
+          finalCustomerId = customer.id
+        }
+      }
+    }
+
     let query = supabase
       .from('customer_addresses')
       .select('*')
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false })
 
-    if (customer_id) {
-      query = query.eq('customer_id', customer_id)
+    if (finalCustomerId) {
+      query = query.eq('customer_id', finalCustomerId)
     }
 
     const { data, error } = await query
@@ -58,10 +77,21 @@ export const createAddress = async (addressData) => {
       throw new Error('Unauthorized')
     }
 
+    // Get customer ID from customers table by email
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('email', user.email)
+      .single()
+
+    if (customerError || !customer) {
+      throw new Error('Customer not found')
+    }
+
     const { data, error } = await supabase
       .from('customer_addresses')
       .insert({
-        customer_id: user.id,
+        customer_id: customer.id,
         ...addressData,
       })
       .select()

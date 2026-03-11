@@ -432,18 +432,16 @@ export default function Hosting() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="text-sm">
-                          {pkg.expiration_date ? formatDate(pkg.expiration_date) : <span className="text-muted-foreground">Sınırsız</span>}
-                        </div>
-                        {pkg.expiration_date && (
-                          <div className="text-xs mt-1">
-                            {getExpirationBadge(pkg.expiration_date)}
-                          </div>
-                        )}
+                      <div className="text-sm">
+                        {pkg.expiration_date ? formatDate(pkg.expiration_date) : <span className="text-muted-foreground">Sınırsız</span>}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(pkg.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(pkg.status)}
+                        {pkg.expiration_date && getExpirationBadge(pkg.expiration_date)}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {/* Provision button - only show if no username (not provisioned) and has server */}

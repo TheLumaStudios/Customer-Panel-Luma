@@ -83,3 +83,96 @@ export function useInitializeIyzicoPayment() {
       invoicesApi.initializeIyzicoPayment(invoice_id, return_url),
   })
 }
+
+/**
+ * Upload invoice file mutation
+ */
+export function useUploadInvoiceFile() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoice_id, file }) =>
+      invoicesApi.uploadInvoiceFile(invoice_id, file),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices', variables.invoice_id] })
+    },
+  })
+}
+
+/**
+ * Delete invoice file mutation
+ */
+export function useDeleteInvoiceFile() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoice_id, filePath }) =>
+      invoicesApi.deleteInvoiceFile(invoice_id, filePath),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices', variables.invoice_id] })
+    },
+  })
+}
+
+/**
+ * Update invoice mutation
+ */
+export function useUpdateInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }) => invoicesApi.updateInvoice(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices', variables.id] })
+    },
+  })
+}
+
+/**
+ * Delete invoice mutation
+ */
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: invoicesApi.deleteInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+/**
+ * Upload tax receipt mutation
+ */
+export function useUploadTaxReceipt() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoice_id, file }) =>
+      invoicesApi.uploadTaxReceipt(invoice_id, file),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices', variables.invoice_id] })
+    },
+  })
+}
+
+/**
+ * Delete tax receipt mutation
+ */
+export function useDeleteTaxReceipt() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoice_id, filePath }) =>
+      invoicesApi.deleteTaxReceipt(invoice_id, filePath),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices', variables.invoice_id] })
+    },
+  })
+}

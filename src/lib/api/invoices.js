@@ -16,33 +16,56 @@ const SUPABASE_FUNCTIONS_URL = baseUrl.includes('/rest/v1')
  */
 export const getInvoices = async (params = {}) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
+    // Use direct Supabase query with RLS policies instead of Edge Function
+    // This avoids JWT validation issues
+    let query = supabase
+      .from('invoices')
+      .select(`
+        *,
+        invoice_items(*)
+      `, { count: 'exact' })
 
-    const queryParams = new URLSearchParams()
-    if (params.customer_id) queryParams.append('customer_id', params.customer_id)
-    if (params.status) queryParams.append('status', params.status)
-    if (params.limit) queryParams.append('limit', params.limit.toString())
-    if (params.offset) queryParams.append('offset', params.offset.toString())
-
-    const response = await fetch(
-      `${SUPABASE_FUNCTIONS_URL}/invoice-list?${queryParams.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-      }
-    )
-
-    const result = await response.json()
-
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch invoices')
+    // Filter by customer if specified
+    if (params.customer_id) {
+      query = query.eq('customer_id', params.customer_id)
     }
 
+    // Filter by status
+    if (params.status) {
+      query = query.eq('status', params.status)
+    }
+
+    // Apply pagination
+    const limit = params.limit || 50
+    const offset = params.offset || 0
+    query = query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    const { data: invoices, error, count } = await query
+
+    if (error) {
+      console.error('Invoice query error:', error)
+      throw error
+    }
+
+    // Fetch customer details for each invoice
+    const customerIds = [...new Set(invoices?.map(inv => inv.customer_id) || [])]
+    const { data: customers } = await supabase
+      .from('customers')
+      .select('id, full_name, email, customer_code')
+      .in('id', customerIds)
+
+    // Map customers to invoices
+    const invoicesWithCustomers = invoices?.map(invoice => ({
+      ...invoice,
+      items: invoice.invoice_items,
+      customer: customers?.find(c => c.id === invoice.customer_id) || null
+    })) || []
+
     return {
-      invoices: result.invoices,
-      total: result.total,
+      invoices: invoicesWithCustomers,
+      total: count || 0,
     }
   } catch (error) {
     console.error('getInvoices failed:', error)
@@ -56,18 +79,40 @@ export const getInvoices = async (params = {}) => {
  */
 export const getInvoice = async (id) => {
   try {
-    const { data, error } = await supabase
+    // Get invoice
+    const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        customer:profiles(id, full_name, email),
-        items:invoice_items(*)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
-    if (error) throw error
-    return data
+    if (invoiceError) throw invoiceError
+    if (!invoice) throw new Error('Invoice not found')
+
+    // Get invoice items
+    const { data: items, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', id)
+
+    if (itemsError) throw itemsError
+
+    // Get customer details
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('id, full_name, email, customer_code')
+      .eq('id', invoice.customer_id)
+      .single()
+
+    if (customerError) {
+      console.warn('Failed to fetch customer:', customerError)
+    }
+
+    return {
+      ...invoice,
+      items: items || [],
+      customer: customer || null
+    }
   } catch (error) {
     console.error('getInvoice failed:', error)
     throw error
@@ -86,6 +131,7 @@ export const getInvoice = async (id) => {
  */
 export const createInvoice = async (invoiceData) => {
   try {
+    console.log('📤 Sending invoice creation request:', invoiceData)
     const { data: { session } } = await supabase.auth.getSession()
 
     const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-create`, {
@@ -97,7 +143,16 @@ export const createInvoice = async (invoiceData) => {
       body: JSON.stringify(invoiceData),
     })
 
+    console.log('📥 Response status:', response.status, response.statusText)
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }))
+      console.error('❌ Error response:', errorData)
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
     const result = await response.json()
+    console.log('✅ Invoice created successfully:', result)
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to create invoice')
@@ -105,7 +160,7 @@ export const createInvoice = async (invoiceData) => {
 
     return result.invoice
   } catch (error) {
-    console.error('createInvoice failed:', error)
+    console.error('❌ createInvoice failed:', error)
     throw error
   }
 }
@@ -131,6 +186,11 @@ export const payInvoice = async (paymentData) => {
       },
       body: JSON.stringify(paymentData),
     })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+    }
 
     const result = await response.json()
 
@@ -166,11 +226,11 @@ export const getCustomerCredit = async (customer_id) => {
     }
 
     // Return default if no record exists
-    return data || { balance: 0, currency: 'USD', customer_id }
+    return data || { balance: 0, currency: 'TRY', customer_id }
   } catch (error) {
     console.error('getCustomerCredit failed:', error)
     // Return default on error to prevent UI crashes
-    return { balance: 0, currency: 'USD', customer_id }
+    return { balance: 0, currency: 'TRY', customer_id }
   }
 }
 
@@ -181,7 +241,7 @@ export const getCustomerCredit = async (customer_id) => {
  * @param {string} currency - Currency
  * @param {string} description - Description
  */
-export const addCustomerCredit = async (customer_id, amount, currency = 'USD', description = '') => {
+export const addCustomerCredit = async (customer_id, amount, currency = 'TRY', description = '') => {
   try {
     // Get current balance
     const currentCredit = await getCustomerCredit(customer_id)
@@ -220,6 +280,224 @@ export const addCustomerCredit = async (customer_id, amount, currency = 'USD', d
 }
 
 /**
+ * Upload official invoice file
+ * @param {string} invoice_id - Invoice ID
+ * @param {File} file - File to upload
+ */
+export const uploadInvoiceFile = async (invoice_id, file) => {
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${invoice_id}-${Date.now()}.${fileExt}`
+    const filePath = `${fileName}`
+
+    // Upload file to storage
+    const { error: uploadError } = await supabase.storage
+      .from('invoices')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) throw uploadError
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('invoices')
+      .getPublicUrl(filePath)
+
+    // Update invoice with file URL
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ official_invoice_url: publicUrl })
+      .eq('id', invoice_id)
+
+    if (updateError) throw updateError
+
+    return { url: publicUrl, path: filePath }
+  } catch (error) {
+    console.error('uploadInvoiceFile failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete invoice file
+ * @param {string} invoice_id - Invoice ID
+ * @param {string} filePath - File path in storage
+ */
+export const deleteInvoiceFile = async (invoice_id, filePath) => {
+  try {
+    // Delete file from storage
+    const { error: deleteError } = await supabase.storage
+      .from('invoices')
+      .remove([filePath])
+
+    if (deleteError) throw deleteError
+
+    // Update invoice to remove file URL
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ official_invoice_url: null })
+      .eq('id', invoice_id)
+
+    if (updateError) throw updateError
+
+    return { success: true }
+  } catch (error) {
+    console.error('deleteInvoiceFile failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Upload tax receipt file
+ * @param {string} invoice_id - Invoice ID
+ * @param {File} file - File to upload
+ */
+export const uploadTaxReceipt = async (invoice_id, file) => {
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `tax-${invoice_id}-${Date.now()}.${fileExt}`
+    const filePath = `${fileName}`
+
+    // Upload file to storage
+    const { error: uploadError } = await supabase.storage
+      .from('invoices')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) throw uploadError
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('invoices')
+      .getPublicUrl(filePath)
+
+    // Update invoice with file URL
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ tax_receipt_url: publicUrl })
+      .eq('id', invoice_id)
+
+    if (updateError) throw updateError
+
+    return { url: publicUrl, path: filePath }
+  } catch (error) {
+    console.error('uploadTaxReceipt failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete tax receipt file
+ * @param {string} invoice_id - Invoice ID
+ * @param {string} filePath - File path in storage
+ */
+export const deleteTaxReceipt = async (invoice_id, filePath) => {
+  try {
+    // Delete file from storage
+    const { error: deleteError } = await supabase.storage
+      .from('invoices')
+      .remove([filePath])
+
+    if (deleteError) throw deleteError
+
+    // Update invoice to remove file URL
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ tax_receipt_url: null })
+      .eq('id', invoice_id)
+
+    if (updateError) throw updateError
+
+    return { success: true }
+  } catch (error) {
+    console.error('deleteTaxReceipt failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Update invoice
+ * @param {string} id - Invoice ID
+ * @param {Object} updateData - Data to update
+ */
+export const updateInvoice = async (id, updateData) => {
+  try {
+    // Extract items from updateData
+    const { items, ...invoiceData } = updateData
+
+    // Update invoice (without items)
+    const { data, error } = await supabase
+      .from('invoices')
+      .update(invoiceData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    // If items are provided, update them
+    if (items) {
+      // Delete existing items
+      await supabase
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', id)
+
+      // Insert new items
+      const invoiceItems = items.map(item => {
+        const totalPrice = (item.quantity || 1) * item.unit_price
+        return {
+          invoice_id: id,
+          type: item.type || 'service',
+          description: item.description,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price,
+          amount: totalPrice,
+          total_price: totalPrice,
+          total: totalPrice,
+          service_id: item.service_id,
+          service_type: item.service_type,
+        }
+      })
+
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems)
+
+      if (itemsError) throw itemsError
+    }
+
+    return data
+  } catch (error) {
+    console.error('updateInvoice failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete invoice
+ * @param {string} id - Invoice ID
+ */
+export const deleteInvoice = async (id) => {
+  try {
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+    return { success: true }
+  } catch (error) {
+    console.error('deleteInvoice failed:', error)
+    throw error
+  }
+}
+
+/**
  * Initialize iyzico payment
  * @param {string} invoice_id - Invoice ID
  * @param {string} return_url - URL to return after payment
@@ -239,6 +517,11 @@ export const initializeIyzicoPayment = async (invoice_id, return_url = null) => 
         return_url: return_url || `${window.location.origin}/payment-callback`,
       }),
     })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+    }
 
     const result = await response.json()
 

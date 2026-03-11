@@ -49,7 +49,7 @@ export default function CustomerDetails() {
   // Filter data for this customer
   const customerDomains = allDomains?.filter(d => d.customer_id === id) || []
   const customerHosting = allHosting?.filter(h => h.customer_id === id) || []
-  const customerInvoices = allInvoices?.filter(i => i.customer_id === id) || []
+  const customerInvoices = allInvoices?.invoices?.filter(i => i.customer_id === id) || []
   const customerTickets = allTickets?.filter(t => t.customer_id === id) || []
 
   if (customerLoading) {

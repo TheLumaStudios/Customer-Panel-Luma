@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   subtotal DECIMAL(10, 2) NOT NULL DEFAULT 0,
   tax DECIMAL(10, 2) NOT NULL DEFAULT 0,
   total DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
 
   -- Payment info
   payment_method VARCHAR(50), -- credit_card, bank_transfer, wallet, iyzico, paytr
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS payments (
 
   -- Payment details
   amount DECIMAL(10, 2) NOT NULL,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
   payment_method VARCHAR(50) NOT NULL, -- iyzico, paytr, bank_transfer, wallet
 
   -- Gateway info
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS recurring_billing (
   -- Billing cycle
   billing_cycle VARCHAR(20) NOT NULL, -- monthly, quarterly, semi_annually, annually, biennially
   amount DECIMAL(10, 2) NOT NULL,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
 
   -- Dates
   next_due_date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS domain_orders (
 
   -- Pricing
   price DECIMAL(10, 2) NOT NULL,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
 
   -- External reference (from registrar)
   registrar_order_id VARCHAR(100),
@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS customer_credit (
   customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
 
   balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
 
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
   -- Transaction details
   type VARCHAR(20) NOT NULL, -- credit, debit, refund
   amount DECIMAL(10, 2) NOT NULL,
-  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
 
   -- Reference
   invoice_id UUID REFERENCES invoices(id),

@@ -16,6 +16,14 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization')!
+
+    // Create admin client for operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Verify user with auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -23,9 +31,16 @@ serve(async (req) => {
     )
 
     // Get user from auth token
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    if (!user) {
-      throw new Error('Unauthorized')
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     const {
@@ -40,16 +55,33 @@ serve(async (req) => {
       throw new Error('invoice_id and payment_method are required')
     }
 
-    // Get invoice
-    const { data: invoice, error: invoiceError } = await supabaseClient
+    // Get invoice using admin client
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .select('*')
       .eq('id', invoice_id)
       .single()
 
     if (invoiceError || !invoice) {
+      console.error('❌ Invoice not found:', invoice_id, invoiceError)
       throw new Error('Invoice not found')
     }
+
+    console.log('📄 Found invoice:', invoice.invoice_number, 'customer_id:', invoice.customer_id)
+
+    // Verify customer exists in customers table
+    const { data: customerData, error: customerCheckError } = await supabaseAdmin
+      .from('customers')
+      .select('id, full_name, email, customer_code')
+      .eq('id', invoice.customer_id)
+      .single()
+
+    if (customerCheckError || !customerData) {
+      console.error('❌ Customer not found for customer_id:', invoice.customer_id, customerCheckError)
+      throw new Error(`Customer not found: ${invoice.customer_id}`)
+    }
+
+    console.log('✅ Customer found:', customerData.full_name, customerData.email)
 
     // Check if already paid
     if (invoice.status === 'paid') {
@@ -57,7 +89,7 @@ serve(async (req) => {
     }
 
     // Check authorization (admin or own invoice)
-    const { data: profile } = await supabaseClient
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -65,13 +97,19 @@ serve(async (req) => {
 
     const isAdmin = profile?.role === 'admin'
     if (!isAdmin && invoice.customer_id !== user.id) {
-      throw new Error('Unauthorized to pay this invoice')
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized to pay this invoice' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Handle wallet payment
     if (payment_method === 'wallet') {
       // Get customer credit
-      const { data: credit } = await supabaseClient
+      const { data: credit } = await supabaseAdmin
         .from('customer_credit')
         .select('*')
         .eq('customer_id', invoice.customer_id)
@@ -84,7 +122,7 @@ serve(async (req) => {
       // Deduct from wallet
       const newBalance = credit.balance - invoice.total
 
-      const { error: creditError } = await supabaseClient
+      const { error: creditError } = await supabaseAdmin
         .from('customer_credit')
         .update({ balance: newBalance })
         .eq('customer_id', invoice.customer_id)
@@ -94,7 +132,7 @@ serve(async (req) => {
       }
 
       // Record credit transaction
-      await supabaseClient
+      await supabaseAdmin
         .from('credit_transactions')
         .insert({
           customer_id: invoice.customer_id,
@@ -107,8 +145,9 @@ serve(async (req) => {
         })
     }
 
-    // Create payment record
-    const { data: payment, error: paymentError } = await supabaseClient
+    // Create payment record using admin client
+    console.log('💳 Creating payment record for customer_id:', invoice.customer_id)
+    const { data: payment, error: paymentError } = await supabaseAdmin
       .from('payments')
       .insert({
         customer_id: invoice.customer_id,
@@ -125,11 +164,14 @@ serve(async (req) => {
       .single()
 
     if (paymentError) {
+      console.error('❌ Payment creation error:', paymentError)
       throw paymentError
     }
 
-    // Update invoice status
-    const { error: updateError } = await supabaseClient
+    console.log('✅ Payment created successfully:', payment.id)
+
+    // Update invoice status using admin client
+    const { error: updateError } = await supabaseAdmin
       .from('invoices')
       .update({
         status: 'paid',
@@ -144,22 +186,34 @@ serve(async (req) => {
     }
 
     // Fetch updated invoice
-    const { data: updatedInvoice } = await supabaseClient
+    const { data: updatedInvoice } = await supabaseAdmin
       .from('invoices')
       .select(`
         *,
-        customer:profiles(id, full_name, email),
-        items:invoice_items(*)
+        invoice_items(*)
       `)
       .eq('id', invoice.id)
       .single()
+
+    // Fetch customer details
+    const { data: customer } = await supabaseAdmin
+      .from('customers')
+      .select('id, full_name, email, customer_code')
+      .eq('id', updatedInvoice.customer_id)
+      .single()
+
+    const invoiceWithCustomer = {
+      ...updatedInvoice,
+      items: updatedInvoice.invoice_items,
+      customer
+    }
 
     console.log('✅ Invoice paid:', invoice.invoice_number, 'Method:', payment_method)
 
     return new Response(
       JSON.stringify({
         success: true,
-        invoice: updatedInvoice,
+        invoice: invoiceWithCustomer,
         payment,
       }),
       {

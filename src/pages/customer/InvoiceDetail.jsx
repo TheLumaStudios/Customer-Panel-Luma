@@ -117,11 +117,27 @@ export default function InvoiceDetail() {
   }
 
   const formatCurrency = (amount, currency = 'USD') => {
+    const value = amount || 0
     if (currency === 'TRY') {
-      return `₺${amount.toFixed(2)}`
+      return `₺${value.toFixed(2)}`
     }
-    return `$${amount.toFixed(2)}`
+    return `$${value.toFixed(2)}`
   }
+
+  // Calculate totals from items if not set in database
+  const calculateTotals = () => {
+    const itemsTotal = invoice.items?.reduce((sum, item) => {
+      return sum + ((item.quantity || 1) * (item.unit_price || 0))
+    }, 0) || 0
+
+    const subtotal = invoice.subtotal || itemsTotal
+    const tax = invoice.tax || 0
+    const total = invoice.total || (subtotal + tax)
+
+    return { subtotal, tax, total }
+  }
+
+  const { subtotal, tax, total } = calculateTotals()
 
   const getStatusBadge = (status) => {
     const config = {
@@ -263,7 +279,7 @@ export default function InvoiceDetail() {
                           {formatCurrency(item.unit_price, invoice.currency)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(item.amount, invoice.currency)}
+                          {formatCurrency((item.quantity || 1) * (item.unit_price || 0), invoice.currency)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -277,17 +293,17 @@ export default function InvoiceDetail() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Ara Toplam</span>
-                  <span className="font-medium">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+                  <span className="font-medium">{formatCurrency(subtotal, invoice.currency)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Vergi</span>
-                  <span className="font-medium">{formatCurrency(invoice.tax, invoice.currency)}</span>
+                  <span className="font-medium">{formatCurrency(tax, invoice.currency)}</span>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">Toplam</span>
                   <span className="text-2xl font-bold text-primary">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    {formatCurrency(total, invoice.currency)}
                   </span>
                 </div>
               </div>
@@ -320,7 +336,7 @@ export default function InvoiceDetail() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Tutar</span>
-                  <span className="font-semibold">{formatCurrency(invoice.total, invoice.currency)}</span>
+                  <span className="font-semibold">{formatCurrency(total, invoice.currency)}</span>
                 </div>
                 {invoice.status === 'unpaid' && (
                   <div className="flex items-center justify-between pt-2 border-t">
@@ -338,6 +354,27 @@ export default function InvoiceDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Official Invoice */}
+          {invoice.official_invoice_url && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Resmi Fatura</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  asChild
+                >
+                  <a href={invoice.official_invoice_url} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4 mr-2" />
+                    Resmi Faturayı İndir
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Actions */}
           <Card>
@@ -374,7 +411,7 @@ export default function InvoiceDetail() {
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium">Ödenecek Tutar:</span>
                 <span className="text-2xl font-bold">
-                  {formatCurrency(invoice.total, invoice.currency)}
+                  {formatCurrency(total, invoice.currency)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -383,7 +420,7 @@ export default function InvoiceDetail() {
                   {formatCurrency(credit?.balance || 0, credit?.currency)}
                 </span>
               </div>
-              {credit?.balance < invoice.total && (
+              {credit?.balance < total && (
                 <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-md">
                   <p className="text-xs text-yellow-800 dark:text-yellow-200">
                     Wallet bakiyeniz yetersiz. Lütfen bakiye yükleyin veya başka ödeme yöntemi seçin.
@@ -396,7 +433,7 @@ export default function InvoiceDetail() {
             <Button
               variant="outline"
               onClick={() => handlePayInvoice('wallet')}
-              disabled={payInvoice.isPending || (credit?.balance < invoice.total)}
+              disabled={payInvoice.isPending || (credit?.balance < total)}
               className="w-full sm:w-auto"
             >
               <Wallet className="h-4 w-4 mr-2" />

@@ -1,8 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Globe, Server, FileText } from 'lucide-react'
+import { useContractCheck } from '@/hooks/useContractCheck'
+import ContractApprovalModal from '@/components/contracts/ContractApprovalModal'
 
 export default function CustomerDashboard() {
+  const { currentContract, showModal, setShowModal, pendingCount } = useContractCheck()
+
   return (
+    <>
+      <ContractApprovalModal
+        contract={currentContract}
+        open={showModal}
+        onOpenChange={setShowModal}
+      />
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
@@ -57,5 +67,6 @@ export default function CustomerDashboard() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 }

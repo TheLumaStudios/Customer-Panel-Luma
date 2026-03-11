@@ -14,12 +14,19 @@ import {
   LogOut,
   Monitor,
   Cpu,
-  Search
+  Search,
+  TrendingUp,
+  UserCog,
+  CheckSquare,
+  Sliders,
+  FileSignature
 } from 'lucide-react'
 
 const adminMenuItems = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Analiz', path: '/admin/analytics', icon: TrendingUp },
   { name: 'Müşteriler', path: '/admin/customers', icon: Users },
+  { name: 'Çalışanlar', path: '/admin/employees', icon: UserCog },
   { name: 'Domain Ara', path: '/admin/domain-search', icon: Search },
   { name: 'Domainler', path: '/admin/domains', icon: Globe },
   { name: 'Hosting', path: '/admin/hosting', icon: Server },
@@ -27,8 +34,21 @@ const adminMenuItems = [
   { name: 'VDS / VPS', path: '/admin/vds', icon: Monitor },
   { name: 'Sunucular', path: '/admin/servers', icon: HardDrive },
   { name: 'Faturalar', path: '/admin/invoices', icon: FileText },
+  { name: 'Sözleşmeler', path: '/admin/contracts', icon: FileSignature },
+  { name: 'Onaylar', path: '/admin/approvals', icon: CheckSquare },
   { name: 'Destek', path: '/admin/tickets', icon: Ticket },
+  { name: 'Sistem Ayarları', path: '/admin/system-settings', icon: Sliders },
   { name: 'Ayarlar', path: '/admin/settings', icon: Settings },
+]
+
+const employeeMenuItems = [
+  { name: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
+  { name: 'Müşteriler', path: '/employee/customers', icon: Users },
+  { name: 'Domainler', path: '/employee/domains', icon: Globe },
+  { name: 'Hosting', path: '/employee/hosting', icon: Server },
+  { name: 'Faturalar', path: '/employee/invoices', icon: FileText },
+  { name: 'Onay Taleplerim', path: '/employee/approvals', icon: CheckSquare },
+  { name: 'Destek', path: '/employee/tickets', icon: Ticket },
 ]
 
 const customerMenuItems = [
@@ -47,8 +67,13 @@ export default function Sidebar() {
   const { profile, signOut, user } = useAuth()
 
   // Determine menu items based on role (fallback to customer if profile not loaded)
-  const isAdmin = profile?.role === 'admin'
-  const menuItems = isAdmin ? adminMenuItems : customerMenuItems
+  const role = profile?.role || 'customer'
+  let menuItems = customerMenuItems
+  if (role === 'admin') {
+    menuItems = adminMenuItems
+  } else if (role === 'employee') {
+    menuItems = employeeMenuItems
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -58,9 +83,9 @@ export default function Sidebar() {
   return (
     <aside className="w-64 h-screen bg-card border-r border-border flex flex-col">
       <div className="p-6 border-b border-border flex-shrink-0">
-        <h1 className="text-2xl font-bold text-foreground">Customer Panel</h1>
+        <h1 className="text-2xl font-bold text-foreground">Luma Yazılım</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {profile?.role === 'admin' ? 'Admin Panel' : 'Müşteri Paneli'}
+          {role === 'admin' ? 'Admin Panel' : role === 'employee' ? 'Çalışan Paneli' : 'Müşteri Paneli'}
         </p>
       </div>
 
