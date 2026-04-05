@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CommandDialog,
@@ -22,21 +22,54 @@ import {
   Cpu,
   Package,
   HardDrive,
+  Clock,
+  Key,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { useCustomers } from '@/hooks/useCustomers'
-import { useInvoices } from '@/hooks/useInvoices'
+import { supabase } from '@/lib/supabase'
+
+const RECENT_ITEMS_KEY = 'command_palette_recent'
+const MAX_RECENT = 5
+
+function getRecentItems() {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_ITEMS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function addRecentItem(item) {
+  const recent = getRecentItems().filter(r => r.path !== item.path)
+  recent.unshift({ label: item.label, path: item.path, type: item.type || 'page' })
+  localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)))
+}
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [searchResults, setSearchResults] = useState({
+    customers: [],
+    invoices: [],
+    tickets: [],
+    domains: [],
+    hosting: [],
+  })
+  const [searching, setSearching] = useState(false)
+  const [recentItems, setRecentItems] = useState([])
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const { data: customers } = useCustomers()
-  const { data: invoicesData } = useInvoices()
-  const invoices = invoicesData?.invoices || []
+  const debounceRef = useRef(null)
 
   const isAdmin = profile?.role === 'admin'
+
+  // Load recent items when opening
+  useEffect(() => {
+    if (open) {
+      setRecentItems(getRecentItems())
+    }
+  }, [open])
 
   // Keyboard shortcut
   useEffect(() => {
@@ -51,10 +84,111 @@ export default function CommandPalette() {
     return () => document.removeEventListener('keydown', down)
   }, [])
 
-  const handleSelect = useCallback((callback) => {
+  // Debounced search (300ms)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!search || search.length < 2) {
+      setDebouncedSearch('')
+      setSearchResults({ customers: [], invoices: [], tickets: [], domains: [], hosting: [] })
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [search])
+
+  // Execute search when debounced value changes
+  useEffect(() => {
+    if (!debouncedSearch || debouncedSearch.length < 2) return
+
+    const performSearch = async () => {
+      setSearching(true)
+      try {
+        const term = `%${debouncedSearch}%`
+        const queries = []
+
+        // Search customers (admin only)
+        if (isAdmin) {
+          queries.push(
+            supabase
+              .from('customers')
+              .select('id, full_name, email, customer_code')
+              .or(`full_name.ilike.${term},email.ilike.${term},customer_code.ilike.${term}`)
+              .limit(5)
+          )
+        } else {
+          queries.push(Promise.resolve({ data: [] }))
+        }
+
+        // Search invoices
+        queries.push(
+          supabase
+            .from('invoices')
+            .select('id, invoice_number, status, total')
+            .ilike('invoice_number', term)
+            .limit(5)
+        )
+
+        // Search tickets
+        queries.push(
+          supabase
+            .from('tickets')
+            .select('id, subject, status')
+            .ilike('subject', term)
+            .limit(5)
+        )
+
+        // Search domains
+        queries.push(
+          supabase
+            .from('domains')
+            .select('id, domain_name, status')
+            .ilike('domain_name', term)
+            .limit(5)
+        )
+
+        // Search hosting
+        queries.push(
+          supabase
+            .from('hosting')
+            .select('id, domain, package_name, status')
+            .or(`domain.ilike.${term},package_name.ilike.${term}`)
+            .limit(5)
+        )
+
+        const [customersRes, invoicesRes, ticketsRes, domainsRes, hostingRes] = await Promise.all(queries)
+
+        setSearchResults({
+          customers: customersRes.data || [],
+          invoices: invoicesRes.data || [],
+          tickets: ticketsRes.data || [],
+          domains: domainsRes.data || [],
+          hosting: hostingRes.data || [],
+        })
+      } catch (err) {
+        console.error('Command palette search error:', err)
+      } finally {
+        setSearching(false)
+      }
+    }
+
+    performSearch()
+  }, [debouncedSearch, isAdmin])
+
+  const handleSelect = useCallback((item) => {
     setOpen(false)
-    callback()
-  }, [])
+    setSearch('')
+    if (item.label && item.path) {
+      addRecentItem(item)
+    }
+    navigate(item.path)
+  }, [navigate])
 
   // Navigation items
   const adminPages = [
@@ -76,9 +210,10 @@ export default function CommandPalette() {
     { icon: Search, label: 'Domain Ara', path: '/domain-search' },
     { icon: Globe, label: 'Domainlerim', path: '/domains' },
     { icon: Server, label: 'Hostingim', path: '/hosting' },
-    { icon: Cpu, label: 'VDS / VPS', path: '/vds' },
+    { icon: Cpu, label: 'VDS / VPS', path: '/my-vds' },
     { icon: FileText, label: 'Faturalarım', path: '/invoices' },
     { icon: Ticket, label: 'Destek', path: '/tickets' },
+    { icon: Key, label: 'API Anahtarları', path: '/api-keys' },
     { icon: Settings, label: 'Profil', path: '/profile' },
   ]
 
@@ -99,41 +234,53 @@ export default function CommandPalette() {
 
   const actions = isAdmin ? adminActions : customerActions
 
-  // Filter customers
-  const filteredCustomers = customers?.filter(c =>
-    search && (
-      c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.customer_code?.toLowerCase().includes(search.toLowerCase())
-    )
-  ).slice(0, 5) || []
-
-  // Filter invoices
-  const filteredInvoices = invoices?.filter(inv =>
-    search && (
-      inv.invoice_number?.toLowerCase().includes(search.toLowerCase())
-    )
-  ).slice(0, 5) || []
+  const hasSearchResults =
+    searchResults.customers.length > 0 ||
+    searchResults.invoices.length > 0 ||
+    searchResults.tickets.length > 0 ||
+    searchResults.domains.length > 0 ||
+    searchResults.hosting.length > 0
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Ara... (Sayfalar, müşteriler, faturalar)"
+        placeholder="Ara... (Sayfalar, müşteriler, faturalar, domainler)"
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>Sonuç bulunamadı.</CommandEmpty>
+        <CommandEmpty>
+          {searching ? 'Aranıyor...' : 'Sonuç bulunamadı.'}
+        </CommandEmpty>
+
+        {/* Recent Items */}
+        {!search && recentItems.length > 0 && (
+          <>
+            <CommandGroup heading="Son Ziyaret Edilenler">
+              {recentItems.map((item, idx) => (
+                <CommandItem
+                  key={`recent-${idx}`}
+                  onSelect={() => handleSelect(item)}
+                >
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{item.label}</span>
+                  <span className="ml-auto text-xs text-muted-foreground capitalize">{item.type}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         {!search && (
           <>
-            <CommandGroup heading="Quick Actions">
+            <CommandGroup heading="Hızlı İşlemler">
               {actions.map((action) => {
                 const Icon = action.icon
                 return (
                   <CommandItem
                     key={action.label}
-                    onSelect={() => handleSelect(() => navigate(action.path))}
+                    onSelect={() => handleSelect(action)}
                   >
                     <Icon className="mr-2 h-4 w-4" />
                     <span>{action.label}</span>
@@ -153,7 +300,7 @@ export default function CommandPalette() {
               return (
                 <CommandItem
                   key={page.path}
-                  onSelect={() => handleSelect(() => navigate(page.path))}
+                  onSelect={() => handleSelect(page)}
                 >
                   <Icon className="mr-2 h-4 w-4" />
                   <span>{page.label}</span>
@@ -162,14 +309,19 @@ export default function CommandPalette() {
             })}
         </CommandGroup>
 
-        {isAdmin && filteredCustomers.length > 0 && (
+        {/* Search Results - Customers */}
+        {isAdmin && searchResults.customers.length > 0 && (
           <>
             <CommandSeparator />
             <CommandGroup heading="Müşteriler">
-              {filteredCustomers.map((customer) => (
+              {searchResults.customers.map((customer) => (
                 <CommandItem
-                  key={customer.id}
-                  onSelect={() => handleSelect(() => navigate(`/admin/customers/${customer.id}`))}
+                  key={`c-${customer.id}`}
+                  onSelect={() => handleSelect({
+                    label: customer.full_name || customer.email,
+                    path: `/admin/customers/${customer.id}`,
+                    type: 'musteri'
+                  })}
                 >
                   <Users className="mr-2 h-4 w-4" />
                   <div className="flex flex-col">
@@ -182,17 +334,103 @@ export default function CommandPalette() {
           </>
         )}
 
-        {isAdmin && filteredInvoices.length > 0 && (
+        {/* Search Results - Invoices */}
+        {searchResults.invoices.length > 0 && (
           <>
             <CommandSeparator />
             <CommandGroup heading="Faturalar">
-              {filteredInvoices.map((invoice) => (
+              {searchResults.invoices.map((invoice) => (
                 <CommandItem
-                  key={invoice.id}
-                  onSelect={() => handleSelect(() => navigate(`/admin/invoices`))}
+                  key={`i-${invoice.id}`}
+                  onSelect={() => handleSelect({
+                    label: invoice.invoice_number,
+                    path: isAdmin ? `/admin/invoice/${invoice.id}` : `/invoice/${invoice.id}`,
+                    type: 'fatura'
+                  })}
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  <span>{invoice.invoice_number}</span>
+                  <div className="flex flex-col">
+                    <span>{invoice.invoice_number}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {invoice.status === 'paid' ? 'Ödendi' : invoice.status === 'overdue' ? 'Gecikti' : 'Bekliyor'}
+                      {invoice.total ? ` - ₺${invoice.total.toFixed(2)}` : ''}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* Search Results - Tickets */}
+        {searchResults.tickets.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Destek Talepleri">
+              {searchResults.tickets.map((ticket) => (
+                <CommandItem
+                  key={`t-${ticket.id}`}
+                  onSelect={() => handleSelect({
+                    label: ticket.subject,
+                    path: isAdmin ? `/admin/tickets` : `/tickets`,
+                    type: 'destek'
+                  })}
+                >
+                  <Ticket className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>{ticket.subject}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{ticket.status}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* Search Results - Domains */}
+        {searchResults.domains.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Domainler">
+              {searchResults.domains.map((domain) => (
+                <CommandItem
+                  key={`d-${domain.id}`}
+                  onSelect={() => handleSelect({
+                    label: domain.domain_name,
+                    path: isAdmin ? `/admin/domains` : `/domains`,
+                    type: 'domain'
+                  })}
+                >
+                  <Globe className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>{domain.domain_name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{domain.status}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* Search Results - Hosting */}
+        {searchResults.hosting.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Hosting">
+              {searchResults.hosting.map((h) => (
+                <CommandItem
+                  key={`h-${h.id}`}
+                  onSelect={() => handleSelect({
+                    label: h.domain || h.package_name,
+                    path: isAdmin ? `/admin/hosting` : `/hosting`,
+                    type: 'hosting'
+                  })}
+                >
+                  <Server className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>{h.domain || h.package_name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{h.status}</span>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>

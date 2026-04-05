@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, AlertCircle } from 'lucide-react'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Plus, Pencil, Trash2, AlertCircle, Cloud, CloudOff, RefreshCw, CheckCircle2, Clock } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import { supabase } from '@/lib/supabase'
 import DomainForm from '@/components/domains/DomainForm'
 
 export default function Domains() {
@@ -20,6 +22,66 @@ export default function Domains() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingDomain, setEditingDomain] = useState(null)
+  const [cfLoading, setCfLoading] = useState(null) // domain_id being processed
+
+  const callCfFunction = async (functionName, body) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL
+    const functionsUrl = baseUrl.includes('/rest/v1') ? baseUrl.replace('/rest/v1', '/functions/v1') : `${baseUrl}/functions/v1`
+    const res = await fetch(`${functionsUrl}/${functionName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify(body),
+    })
+    return res.json()
+  }
+
+  const handleCfAdd = async (domain) => {
+    setCfLoading(domain.id)
+    try {
+      const result = await callCfFunction('cf-zone-create', { domain_id: domain.id })
+      if (!result.success) throw new Error(result.error)
+      toast.success('Cloudflare\'a eklendi', {
+        description: `NS: ${result.nameservers?.join(', ')}`,
+      })
+      // Refetch domains
+      window.location.reload()
+    } catch (err) {
+      toast.error('CF Hatası', { description: err.message })
+    } finally {
+      setCfLoading(null)
+    }
+  }
+
+  const handleCfStatus = async (domain) => {
+    setCfLoading(domain.id)
+    try {
+      const result = await callCfFunction('cf-zone-status', { domain_id: domain.id })
+      if (!result.success) throw new Error(result.error)
+      toast.success(`CF Durum: ${result.status}`, {
+        description: result.activated ? 'Zone aktif!' : 'NS değişikliği bekleniyor',
+      })
+    } catch (err) {
+      toast.error('Durum alınamadı', { description: err.message })
+    } finally {
+      setCfLoading(null)
+    }
+  }
+
+  const handleCfRemove = async (domain) => {
+    if (!confirm(`${domain.domain_name} Cloudflare'dan kaldırılacak. Emin misiniz?`)) return
+    setCfLoading(domain.id)
+    try {
+      const result = await callCfFunction('cf-zone-delete', { domain_id: domain.id })
+      if (!result.success) throw new Error(result.error)
+      toast.success('Cloudflare\'dan kaldırıldı')
+      window.location.reload()
+    } catch (err) {
+      toast.error('CF Hatası', { description: err.message })
+    } finally {
+      setCfLoading(null)
+    }
+  }
 
   console.log('Domains page - isLoading:', isLoading, 'error:', error, 'data:', domains)
   console.log('Domains page - domains count:', domains?.length)
@@ -124,15 +186,15 @@ export default function Domains() {
       expired: 'Süresi Doldu',
       suspended: 'Askıda',
     }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Domainler</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Domainler</h1>
+          <p className="page-description">
             Tüm domainleri görüntüleyin ve yönetin
           </p>
         </div>
@@ -142,7 +204,7 @@ export default function Domains() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>Domain Listesi</CardTitle>
           <CardDescription>
@@ -165,6 +227,7 @@ export default function Domains() {
                   <TableHead>Kalan Süre</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Otomatik Yenileme</TableHead>
+                  <TableHead>Cloudflare</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
               </TableHeader>
@@ -195,20 +258,53 @@ export default function Domains() {
                         <Badge variant="secondary">Hayır</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell>
+                      {domain.cf_zone_id ? (
+                        <div className="flex items-center gap-1.5">
+                          {domain.cf_status === 'active' ? (
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Aktif
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+                              <Clock className="h-3 w-3" /> Bekliyor
+                            </Badge>
+                          )}
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7"
+                            disabled={cfLoading === domain.id}
+                            onClick={() => handleCfStatus(domain)}
+                            title="Durumu kontrol et"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${cfLoading === domain.id ? 'animate-spin' : ''}`} />
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(domain)}
+                          variant="outline" size="sm" className="h-7 text-xs gap-1"
+                          disabled={cfLoading === domain.id}
+                          onClick={() => handleCfAdd(domain)}
                         >
+                          {cfLoading === domain.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Cloud className="h-3 w-3" />
+                          )}
+                          CF Ekle
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(domain)} title="Düzenle">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(domain.id)}
-                        >
+                        {domain.cf_zone_id && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCfRemove(domain)} title="CF'den Kaldır">
+                            <CloudOff className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(domain.id)} title="Sil">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>

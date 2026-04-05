@@ -288,6 +288,17 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const refetch = async () => {
+    if (user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      if (data) setProfile(data)
+    }
+  }
+
   const value = {
     user,
     profile,
@@ -295,6 +306,7 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
+    refetch,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

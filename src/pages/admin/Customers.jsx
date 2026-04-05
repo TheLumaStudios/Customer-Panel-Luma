@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import CustomerForm from '@/components/customers/CustomerForm'
@@ -19,6 +20,8 @@ import BulkActionBar, { commonBulkActions } from '@/components/tables/BulkAction
 import AdvancedFilter from '@/components/tables/AdvancedFilter'
 import FilterChips from '@/components/tables/FilterChips'
 import ExportButton, { commonExportColumns } from '@/components/tables/ExportButton'
+import { useCustomerView } from '@/contexts/CustomerViewContext'
+import { HealthScoreBadge } from '@/components/shared/HealthScoreBadge'
 
 export default function Customers() {
   const navigate = useNavigate()
@@ -34,6 +37,8 @@ export default function Customers() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [passwordCustomer, setPasswordCustomer] = useState(null)
   const [passwordData, setPasswordData] = useState(null)
+
+  const { viewMode, filterByType } = useCustomerView()
 
   // Filtering
   const [filters, setFilters] = useState([])
@@ -54,11 +59,21 @@ export default function Customers() {
         { label: 'Askıda', value: 'suspended' },
       ]
     },
+    {
+      label: 'Müşteri Tipi',
+      value: 'customer_type',
+      type: 'select',
+      options: [
+        { label: 'Yazılım', value: 'software' },
+        { label: 'Host', value: 'host' },
+      ]
+    },
     { label: 'Kayıt Tarihi', value: 'created_at', type: 'date' },
   ]
 
-  // Apply filters to customers
-  const filteredCustomers = customers?.filter(customer => {
+  // Apply view mode + filters to customers
+  const viewFilteredCustomers = filterByType(customers || [])
+  const filteredCustomers = viewFilteredCustomers?.filter(customer => {
     if (filters.length === 0) return true
 
     return filters.every(filter => {
@@ -113,13 +128,11 @@ export default function Customers() {
   const selection = useTableSelection(filteredCustomers)
 
   const handleCreate = () => {
-    setEditingCustomer(null)
-    setFormOpen(true)
+    navigate('/admin/customers/new')
   }
 
   const handleEdit = (customer) => {
-    setEditingCustomer(customer)
-    setFormOpen(true)
+    navigate(`/admin/customers/${customer.id}/edit`)
   }
 
   const handleSubmit = async (data) => {
@@ -128,6 +141,7 @@ export default function Customers() {
       const customerData = {
         customer_code: data.customer_code,
         status: data.status,
+        customer_type: data.customer_type || 'host',
         // Profile fields (now stored directly in customers table)
         full_name: data.full_name,
         email: data.email,
@@ -322,12 +336,7 @@ export default function Customers() {
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      active: 'default',
-      inactive: 'secondary',
-      suspended: 'destructive',
-    }
-    return <Badge variant={variants[status]}>{status}</Badge>
+    return <StatusBadge status={status} />
   }
 
   return (
@@ -423,6 +432,8 @@ export default function Customers() {
                   <TableHead>E-posta</TableHead>
                   <TableHead>Telefon</TableHead>
                   <TableHead>Durum</TableHead>
+                  <TableHead>Tip</TableHead>
+                  <TableHead>Skor</TableHead>
                   <TableHead>Kayıt Tarihi</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
@@ -452,6 +463,16 @@ export default function Customers() {
                     <TableCell>{customer.email || customer.profile?.email || '-'}</TableCell>
                     <TableCell>{customer.phone || customer.profile?.phone || '-'}</TableCell>
                     <TableCell>{getStatusBadge(customer.status)}</TableCell>
+                    <TableCell>
+                      {customer.customer_type === 'software' ? (
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">Yazılım</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Host</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <HealthScoreBadge score={customer.health_score} size="sm" />
+                    </TableCell>
                     <TableCell>{formatDate(customer.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">

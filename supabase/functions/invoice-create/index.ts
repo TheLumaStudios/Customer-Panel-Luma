@@ -183,7 +183,7 @@ serve(async (req) => {
       .single()
 
     // Fetch customer details
-    const { data: customer } = await supabaseAdmin
+    const { data: customerDetails } = await supabaseAdmin
       .from('customers')
       .select('id, full_name, email, customer_code')
       .eq('id', completeInvoice.customer_id)
@@ -192,7 +192,7 @@ serve(async (req) => {
     const invoiceWithCustomer = {
       ...completeInvoice,
       items: completeInvoice.invoice_items,
-      customer
+      customer: customerDetails
     }
 
     console.log('✅ Invoice created successfully:', invoice.invoice_number)

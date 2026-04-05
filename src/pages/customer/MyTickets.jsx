@@ -5,6 +5,7 @@ import { useCustomers } from '@/hooks/useCustomers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Plus, Eye, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -85,35 +86,11 @@ export default function MyTickets() {
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      open: 'default',
-      in_progress: 'secondary',
-      resolved: 'default',
-      closed: 'secondary',
-    }
-    const labels = {
-      open: 'Açık',
-      in_progress: 'İşlemde',
-      resolved: 'Çözüldü',
-      closed: 'Kapalı',
-    }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getPriorityBadge = (priority) => {
-    const variants = {
-      low: 'secondary',
-      medium: 'default',
-      high: 'destructive',
-      urgent: 'destructive',
-    }
-    const labels = {
-      low: 'Düşük',
-      medium: 'Orta',
-      high: 'Yüksek',
-      urgent: 'Acil',
-    }
-    return <Badge variant={variants[priority]}>{labels[priority]}</Badge>
+    return <StatusBadge status={priority} />
   }
 
   // Calculate summary statistics
@@ -122,11 +99,11 @@ export default function MyTickets() {
   const resolvedTickets = tickets?.filter(t => t.status === 'resolved').length || 0
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Destek Taleplerim</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold tracking-tight">Destek Taleplerim</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Destek taleplerini oluşturun ve takip edin
           </p>
         </div>
@@ -138,45 +115,45 @@ export default function MyTickets() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Açık Talepler</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Cevap bekleyen
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">İşlemde</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inProgressTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Üzerinde çalışılıyor
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Çözüldü</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resolvedTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Çözümlenen talepler
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-blue-50">
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+            </div>
+            Açık Talepler
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1">{openTickets}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Cevap bekleyen
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-amber-50">
+              <MessageSquare className="h-4 w-4 text-amber-600" />
+            </div>
+            İşlemde
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1">{inProgressTickets}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Üzerinde çalışılıyor
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-emerald-50">
+              <MessageSquare className="h-4 w-4 text-emerald-600" />
+            </div>
+            Çözüldü
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1">{resolvedTickets}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Çözümlenen talepler
+          </p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>Talep Listesi</CardTitle>
           <CardDescription>

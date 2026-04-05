@@ -5,6 +5,7 @@ import { useCustomers } from '@/hooks/useCustomers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Cpu, HardDrive, AlertCircle, Eye, Copy, Check, Terminal, Monitor } from 'lucide-react'
@@ -101,19 +102,7 @@ export default function MyVDS() {
   }
 
   const getVDSStatusBadge = (status) => {
-    const variants = {
-      active: 'default',
-      suspended: 'secondary',
-      expired: 'destructive',
-      terminated: 'destructive',
-    }
-    const labels = {
-      active: 'Aktif',
-      suspended: 'Askıda',
-      expired: 'Süresi Doldu',
-      terminated: 'Sonlandırıldı',
-    }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getVDSTypeBadge = (type) => {
@@ -158,12 +147,14 @@ export default function MyVDS() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">VDS / VPS Sunucularım</h1>
-        <p className="text-muted-foreground mt-1">
-          Sanal sunucularınızı yönetin
-        </p>
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">VDS / VPS Sunucularım</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Sanal sunucularınızı yönetin
+          </p>
+        </div>
       </div>
 
       {/* VDS Details Dialog */}
@@ -313,7 +304,7 @@ export default function MyVDS() {
         </DialogContent>
       </Dialog>
 
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>VDS / VPS Sunucularım</CardTitle>
           <CardDescription>
@@ -408,7 +399,7 @@ export default function MyVDS() {
         const daysUntilExpiry = Math.ceil((new Date(vds.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
         return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
       }) && (
-        <Card className="border-yellow-500 bg-yellow-50">
+        <Card className="border-yellow-500 bg-yellow-50 rounded-xl">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600" />

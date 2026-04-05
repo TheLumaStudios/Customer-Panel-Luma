@@ -5,6 +5,7 @@ import { useInvoice, usePayInvoice, useCustomerCredit, useInitializeIyzicoPaymen
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -25,12 +26,11 @@ import {
   Hash,
   DollarSign,
   CheckCircle2,
-  Clock,
-  AlertCircle,
   Wallet,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import BankTransferForm from '@/components/invoices/BankTransferForm'
 
 export default function InvoiceDetail() {
   const { id } = useParams()
@@ -40,6 +40,7 @@ export default function InvoiceDetail() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false)
   const [iyzicoContent, setIyzicoContent] = useState('')
+  const [bankTransferOpen, setBankTransferOpen] = useState(false)
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: credit } = useCustomerCredit(user?.id)
@@ -116,12 +117,8 @@ export default function InvoiceDetail() {
     )
   }
 
-  const formatCurrency = (amount, currency = 'USD') => {
-    const value = amount || 0
-    if (currency === 'TRY') {
-      return `₺${value.toFixed(2)}`
-    }
-    return `$${value.toFixed(2)}`
+  const formatCurrency = (amount) => {
+    return `${(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`
   }
 
   // Calculate totals from items if not set in database
@@ -140,20 +137,7 @@ export default function InvoiceDetail() {
   const { subtotal, tax, total } = calculateTotals()
 
   const getStatusBadge = (status) => {
-    const config = {
-      paid: { label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle2 },
-      unpaid: { label: 'Ödenmedi', className: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
-      overdue: { label: 'Vadesi Geçti', className: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle },
-      cancelled: { label: 'İptal', className: 'bg-gray-100 text-gray-800 border-gray-200', icon: AlertCircle },
-      refunded: { label: 'İade', className: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle2 },
-    }
-    const { label, className, icon: Icon } = config[status] || config.unpaid
-    return (
-      <Badge variant="outline" className={className}>
-        <Icon className="h-3 w-3 mr-1" />
-        {label}
-      </Badge>
-    )
+    return <StatusBadge status={status} />
   }
 
   return (
@@ -173,10 +157,16 @@ export default function InvoiceDetail() {
         </div>
         <div className="flex items-center gap-2">
           {invoice.status === 'unpaid' && (
-            <Button onClick={() => setPaymentModalOpen(true)}>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Ödeme Yap
-            </Button>
+            <>
+              <Button onClick={() => setPaymentModalOpen(true)}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Ödeme Yap
+              </Button>
+              <Button variant="outline" onClick={() => setBankTransferOpen(true)}>
+                <DollarSign className="h-4 w-4 mr-2" />
+                Havale/EFT ile Öde
+              </Button>
+            </>
           )}
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
@@ -468,6 +458,27 @@ export default function InvoiceDetail() {
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bank Transfer Modal */}
+      <Dialog open={bankTransferOpen} onOpenChange={setBankTransferOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Havale / EFT ile Ödeme</DialogTitle>
+            <DialogDescription>
+              {invoice.invoice_number} numaralı fatura için havale/EFT bildiriminde bulunun
+            </DialogDescription>
+          </DialogHeader>
+          <BankTransferForm
+            invoiceId={invoice.id}
+            onSuccess={() => {
+              setBankTransferOpen(false)
+              toast.success('Havale bildirimi gönderildi', {
+                description: 'Faturanız inceleme sonrası onaylanacaktır',
+              })
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

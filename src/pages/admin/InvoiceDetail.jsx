@@ -305,7 +305,12 @@ export default function InvoiceDetail() {
                     <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm text-muted-foreground">Müşteri</p>
-                      <p className="font-medium">{invoice.customer.full_name}</p>
+                      <button
+                        className="font-medium text-primary hover:underline text-left"
+                        onClick={() => navigate(`${basePath}/customers/${invoice.customer.id}`)}
+                      >
+                        {invoice.customer.full_name}
+                      </button>
                       <p className="text-sm text-muted-foreground">{invoice.customer.email}</p>
                     </div>
                   </div>

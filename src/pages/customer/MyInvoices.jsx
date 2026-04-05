@@ -5,6 +5,7 @@ import { useInvoices, usePayInvoice, useCustomerCredit, useInitializeIyzicoPayme
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -101,12 +102,8 @@ export default function MyInvoices() {
     )
   }
 
-  const formatCurrency = (amount, currency = 'USD') => {
-    const value = amount || 0
-    if (currency === 'TRY') {
-      return `₺${value.toFixed(2)}`
-    }
-    return `$${value.toFixed(2)}`
+  const formatCurrency = (amount) => {
+    return `${(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`
   }
 
   // Helper to calculate invoice total
@@ -120,15 +117,7 @@ export default function MyInvoices() {
   }
 
   const getStatusBadge = (status) => {
-    const config = {
-      paid: { label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200' },
-      unpaid: { label: 'Ödenmedi', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      overdue: { label: 'Vadesi Geçti', className: 'bg-red-100 text-red-800 border-red-200' },
-      cancelled: { label: 'İptal', className: 'bg-gray-100 text-gray-800 border-gray-200' },
-      refunded: { label: 'İade', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-    }
-    const { label, className} = config[status] || config.unpaid
-    return <Badge variant="outline" className={className}>{label}</Badge>
+    return <StatusBadge status={status} />
   }
 
   // Calculate summary statistics
@@ -137,11 +126,11 @@ export default function MyInvoices() {
   const overdueAmount = invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.total, 0)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Faturalarım</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold tracking-tight">Faturalarım</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Faturalarınızı görüntüleyin ve ödeme durumlarını takip edin
           </p>
         </div>
@@ -153,57 +142,57 @@ export default function MyInvoices() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wallet Bakiyesi</CardTitle>
-            <Wallet className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatCurrency(credit?.balance || 0, credit?.currency)}</div>
-            <p className="text-xs text-muted-foreground">
-              Kullanılabilir bakiye
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ödenen</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid, invoices[0]?.currency)}</div>
-            <p className="text-xs text-muted-foreground">
-              {invoices.filter(inv => inv.status === 'paid').length} fatura
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bekleyen</CardTitle>
-            <DollarSign className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(pendingAmount, invoices[0]?.currency)}</div>
-            <p className="text-xs text-muted-foreground">
-              {invoices.filter(inv => inv.status === 'unpaid').length} fatura
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vadesi Geçen</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(overdueAmount, invoices[0]?.currency)}</div>
-            <p className="text-xs text-muted-foreground">
-              {invoices.filter(inv => inv.status === 'overdue').length} fatura
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-blue-50">
+              <Wallet className="h-4 w-4 text-blue-600" />
+            </div>
+            Wallet Bakiyesi
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1 text-blue-600">{formatCurrency(credit?.balance || 0, credit?.currency)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Kullanılabilir bakiye
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-emerald-50">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </div>
+            Ödenen
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1 text-green-600">{formatCurrency(totalPaid, invoices[0]?.currency)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {invoices.filter(inv => inv.status === 'paid').length} fatura
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-yellow-50">
+              <DollarSign className="h-4 w-4 text-yellow-600" />
+            </div>
+            Bekleyen
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1 text-yellow-600">{formatCurrency(pendingAmount, invoices[0]?.currency)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {invoices.filter(inv => inv.status === 'unpaid').length} fatura
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border p-5 shadow-card transition-all hover:shadow-card-hover">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </div>
+            Vadesi Geçen
+          </div>
+          <div className="text-2xl font-bold tracking-tight mt-1 text-red-600">{formatCurrency(overdueAmount, invoices[0]?.currency)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {invoices.filter(inv => inv.status === 'overdue').length} fatura
+          </p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>Fatura Listesi</CardTitle>
           <CardDescription>

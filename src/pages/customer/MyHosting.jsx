@@ -6,16 +6,27 @@ import { useCreateTicket } from '@/hooks/useTickets'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Server, AlertCircle, Eye, Copy, Check, RotateCw } from 'lucide-react'
+import { Server, AlertCircle, Eye, Copy, Check, RotateCw, ExternalLink, Mail, ArrowUpDown } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import { supabase } from '@/lib/supabase'
+import PackageUpgradeDialog from '@/components/hosting/PackageUpgradeDialog'
+
+const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+const SUPABASE_FUNCTIONS_URL = baseUrl.includes('/rest/v1')
+  ? baseUrl.replace('/rest/v1', '/functions/v1')
+  : `${baseUrl}/functions/v1`
 
 export default function MyHosting() {
   const [selectedHosting, setSelectedHosting] = useState(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [copiedField, setCopiedField] = useState(null)
+  const [ssoLoading, setSsoLoading] = useState(null)
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false)
+  const [upgradeHosting, setUpgradeHosting] = useState(null)
   const { profile } = useAuth()
   const { data: allHosting, isLoading, error } = useHosting()
   const { data: customers } = useCustomers()
@@ -84,6 +95,37 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
     }
   }
 
+  const handleSso = async (pkg, target) => {
+    const key = `${pkg.id}-${target}`
+    setSsoLoading(key)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/cpanel-sso`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ hosting_id: pkg.id, target }),
+      })
+      const result = await response.json()
+      if (result.success && result.url) {
+        window.open(result.url, '_blank')
+      } else {
+        throw new Error(result.error || 'SSO oturumu oluşturulamadı')
+      }
+    } catch (error) {
+      toast.error('Giriş başarısız', { description: error.message })
+    } finally {
+      setSsoLoading(null)
+    }
+  }
+
+  const handleOpenUpgrade = (pkg) => {
+    setUpgradeHosting(pkg)
+    setUpgradeDialogOpen(true)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -127,17 +169,7 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      active: 'default',
-      expired: 'destructive',
-      suspended: 'secondary',
-    }
-    const labels = {
-      active: 'Aktif',
-      expired: 'Süresi Doldu',
-      suspended: 'Askıda',
-    }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getPackageTypeBadge = (packageType) => {
@@ -177,12 +209,14 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Hosting Paketlerim</h1>
-        <p className="text-muted-foreground mt-1">
-          Hosting paketlerinizi yönetin ve erişim bilgilerine ulaşın
-        </p>
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Hosting Paketlerim</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Hosting paketlerinizi yönetin ve erişim bilgilerine ulaşın
+          </p>
+        </div>
       </div>
 
       {/* Hosting Details Dialog */}
@@ -276,7 +310,7 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
         </DialogContent>
       </Dialog>
 
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>Hosting Paketleri</CardTitle>
           <CardDescription>
@@ -321,14 +355,40 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
                     <TableCell>{getExpirationBadge(pkg.expiration_date)}</TableCell>
                     <TableCell>{getStatusBadge(pkg.status)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleShowDetails(pkg)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Bilgileri Göster
+                          <Eye className="h-4 w-4 mr-1" />
+                          Bilgiler
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSso(pkg, 'cpanel')}
+                          disabled={pkg.status !== 'active' || ssoLoading === `${pkg.id}-cpanel`}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          cPanel
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSso(pkg, 'webmail')}
+                          disabled={pkg.status !== 'active' || ssoLoading === `${pkg.id}-webmail`}
+                        >
+                          <Mail className="h-4 w-4 mr-1" />
+                          Webmail
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenUpgrade(pkg)}
+                        >
+                          <ArrowUpDown className="h-4 w-4 mr-1" />
+                          Paket
                         </Button>
                         <Button
                           variant="outline"
@@ -336,7 +396,7 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
                           onClick={() => handleRestartRequest(pkg)}
                           disabled={pkg.status !== 'active'}
                         >
-                          <RotateCw className="h-4 w-4 mr-2" />
+                          <RotateCw className="h-4 w-4 mr-1" />
                           Restart
                         </Button>
                       </div>
@@ -354,7 +414,7 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
         const daysUntilExpiry = Math.ceil((new Date(pkg.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
         return daysUntilExpiry <= 30 && daysUntilExpiry >= 0
       }) && (
-        <Card className="border-yellow-500 bg-yellow-50">
+        <Card className="border-yellow-500 bg-yellow-50 rounded-xl">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -370,6 +430,19 @@ Lütfen en kısa sürede hosting paketimi restart ediniz.`,
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Package Upgrade Dialog */}
+      {upgradeHosting && (
+        <PackageUpgradeDialog
+          hostingId={upgradeHosting.id}
+          currentPackageId={upgradeHosting.package_id}
+          open={upgradeDialogOpen}
+          onClose={() => {
+            setUpgradeDialogOpen(false)
+            setUpgradeHosting(null)
+          }}
+        />
       )}
     </div>
   )

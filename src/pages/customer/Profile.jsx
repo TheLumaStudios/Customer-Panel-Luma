@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import AddressManager from '@/components/shared/AddressManager'
+import PasswordStrength from '@/components/shared/PasswordStrength'
 import { User, Mail, Phone, Building2, Lock, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -98,17 +99,19 @@ export default function Profile() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Profilim</h1>
-        <p className="text-muted-foreground mt-1">
-          Profil bilgilerinizi görüntüleyin ve düzenleyin
-        </p>
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Profilim</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Profil bilgilerinizi görüntüleyin ve düzenleyin
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Personal Information */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Kişisel Bilgiler</CardTitle>
             <CardDescription>
@@ -183,7 +186,7 @@ export default function Profile() {
         </Card>
 
         {/* Account Information */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Hesap Bilgileri</CardTitle>
             <CardDescription>
@@ -215,7 +218,7 @@ export default function Profile() {
         </Card>
 
         {/* Password Change */}
-        <Card>
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Şifre Değiştir</CardTitle>
             <CardDescription>
@@ -250,6 +253,7 @@ export default function Profile() {
                     placeholder="Yeni şifre (min 6 karakter)"
                   />
                 </div>
+                <PasswordStrength password={passwordForm.newPassword} />
               </div>
 
               <div className="space-y-2">
@@ -276,7 +280,7 @@ export default function Profile() {
 
         {/* Account Stats */}
         {currentCustomer && (
-          <Card>
+          <Card className="rounded-xl">
             <CardHeader>
               <CardTitle>Müşteri Detayları</CardTitle>
               <CardDescription>

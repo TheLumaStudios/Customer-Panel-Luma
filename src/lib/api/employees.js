@@ -252,7 +252,7 @@ export const sendEmployeePassword = async (employee_id, password) => {
     // Import SMS module dynamically
     const { sendSMS } = await import('./sms')
 
-    const message = `Giris bilgileriniz:\nEmail: ${employee.email}\nSifre: ${password}\n\nLuma Yazilim Hizmetleri`
+    const message = `Giriş bilgileriniz:\nEmail: ${employee.email}\nŞifre: ${password}\n\nLuma Yazılım Hizmetleri`
 
     await sendSMS(employee.phone, message)
 

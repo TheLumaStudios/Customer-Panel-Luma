@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth.jsx'
 import { CartProvider } from '@/contexts/CartContext'
+import { ProductCacheProvider } from '@/contexts/ProductCacheContext'
+import { CustomerViewProvider } from '@/contexts/CustomerViewContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { PublicRoute } from '@/components/auth/PublicRoute'
 import MainLayout from '@/components/layout/MainLayout'
-import { Toaster } from '@/components/ui/toaster'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 import LandingPage from '@/pages/LandingPage'
 import FeaturesPage from '@/pages/FeaturesPage'
@@ -15,6 +17,8 @@ import VdsPage from '@/pages/VdsPage'
 import DedicatedPage from '@/pages/DedicatedPage'
 import LinuxHostingPage from '@/pages/LinuxHostingPage'
 import WordPressHostingPage from '@/pages/WordPressHostingPage'
+import PleskHostingPage from '@/pages/PleskHostingPage'
+import ResellerHostingPage from '@/pages/ResellerHostingPage'
 import MinecraftPage from '@/pages/MinecraftPage'
 import CsgoPage from '@/pages/CsgoPage'
 import DomainPage from '@/pages/DomainPage'
@@ -50,13 +54,31 @@ import PaymentSuccess from '@/pages/PaymentSuccess'
 import PaymentFailed from '@/pages/PaymentFailed'
 import DomainSearch from '@/pages/DomainSearch'
 import DomainCheckout from '@/pages/DomainCheckout'
+import CloudflareManager from '@/pages/admin/CloudflareManager'
+import EmailTemplates from '@/pages/admin/EmailTemplates'
+import TicketDepartments from '@/pages/admin/TicketDepartments'
+import KnowledgeBaseAdmin from '@/pages/admin/KnowledgeBaseAdmin'
+import Announcements from '@/pages/admin/Announcements'
+import ProductPackages from '@/pages/admin/ProductPackages'
+import KnowledgeBase from '@/pages/KnowledgeBase'
+import KnowledgeBaseArticle from '@/pages/KnowledgeBaseArticle'
+import NetworkStatus from '@/pages/NetworkStatus'
+import ApiKeys from '@/pages/customer/ApiKeys'
+import Developer from '@/pages/customer/Developer'
+import AuditLogs from '@/pages/admin/AuditLogs'
+import RevenueSplit from '@/pages/admin/RevenueSplit'
+import CustomerFormPage from '@/pages/admin/CustomerFormPage'
+import ProjectMilestones from '@/pages/admin/ProjectMilestones'
+import Checkout from '@/pages/Checkout'
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
+        <ProductCacheProvider>
+        <CustomerViewProvider>
         <CartProvider>
-          <Toaster />
           <Routes>
           {/* Landing pages - accessible to everyone */}
           <Route path="/" element={<LandingPage />} />
@@ -68,6 +90,8 @@ function App() {
           <Route path="/dedicated" element={<DedicatedPage />} />
           <Route path="/linux-hosting" element={<LinuxHostingPage />} />
           <Route path="/wordpress-hosting" element={<WordPressHostingPage />} />
+          <Route path="/plesk-hosting" element={<PleskHostingPage />} />
+          <Route path="/reseller-hosting" element={<ResellerHostingPage />} />
           <Route path="/minecraft" element={<MinecraftPage />} />
           <Route path="/csgo" element={<CsgoPage />} />
           <Route path="/domain" element={<DomainPage />} />
@@ -107,6 +131,8 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="customers" element={<Customers />} />
+            <Route path="customers/new" element={<CustomerFormPage />} />
+            <Route path="customers/:id/edit" element={<CustomerFormPage />} />
             <Route path="customers/:id" element={<CustomerDetails />} />
             <Route path="employees" element={<Employees />} />
             <Route path="domain-search" element={<DomainSearch />} />
@@ -114,6 +140,7 @@ function App() {
             <Route path="domains" element={<Domains />} />
             <Route path="hosting" element={<Hosting />} />
             <Route path="hosting-packages" element={<HostingPackages />} />
+            <Route path="product-packages" element={<ProductPackages />} />
             <Route path="vds" element={<VDS />} />
             <Route path="servers" element={<Servers />} />
             <Route path="invoices" element={<Invoices />} />
@@ -123,6 +150,14 @@ function App() {
             <Route path="contracts" element={<Contracts />} />
             <Route path="settings" element={<Settings />} />
             <Route path="system-settings" element={<SystemSettings />} />
+            <Route path="email-templates" element={<EmailTemplates />} />
+            <Route path="ticket-departments" element={<TicketDepartments />} />
+            <Route path="knowledge-base" element={<KnowledgeBaseAdmin />} />
+            <Route path="announcements" element={<Announcements />} />
+            <Route path="cloudflare" element={<CloudflareManager />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="revenue-split" element={<RevenueSplit />} />
+            <Route path="project-milestones" element={<ProjectMilestones />} />
           </Route>
 
           {/* Employee routes */}
@@ -162,7 +197,7 @@ function App() {
           <Route path="/hosting" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<MyHosting />} />
           </Route>
-          <Route path="/vds" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+          <Route path="/my-vds" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<MyVDS />} />
           </Route>
           <Route path="/invoices" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
@@ -177,13 +212,35 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<Profile />} />
           </Route>
+          <Route path="/knowledge-base" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<KnowledgeBase />} />
+          </Route>
+          <Route path="/knowledge-base/:slug" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<KnowledgeBaseArticle />} />
+          </Route>
+          <Route path="/api-keys" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<ApiKeys />} />
+          </Route>
+          <Route path="/developer" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<Developer />} />
+          </Route>
+          <Route path="/network-status" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<NetworkStatus />} />
+          </Route>
+
+          {/* Public routes */}
+          <Route path="/status" element={<NetworkStatus />} />
+          <Route path="/checkout" element={<Checkout />} />
 
           {/* Catch-all redirects to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </CartProvider>
+        </CustomerViewProvider>
+        </ProductCacheProvider>
       </AuthProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 

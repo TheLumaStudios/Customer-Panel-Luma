@@ -1,0 +1,22 @@
+{
+  "name": "Luma Yazılım - Müşteri Paneli",
+  "short_name": "Luma",
+  "description": "Hosting, domain ve sunucu yönetim paneli",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FAFBFC",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/luma.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/luma.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

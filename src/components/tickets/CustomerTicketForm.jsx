@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { supabase } from '@/lib/supabase'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/select'
 
 const ticketSchema = z.object({
+  department_id: z.string().optional(),
   subject: z.string().min(3, 'Konu en az 3 karakter olmalı'),
   description: z.string().min(10, 'Açıklama en az 10 karakter olmalı'),
   category: z.string().min(1, 'Kategori seçimi gerekli'),
@@ -29,9 +32,23 @@ const ticketSchema = z.object({
 })
 
 export default function CustomerTicketForm({ open, onOpenChange, onSubmit }) {
+  const [departments, setDepartments] = useState([])
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const { data } = await supabase
+        .from('ticket_departments')
+        .select('*')
+        .order('name')
+      if (data) setDepartments(data)
+    }
+    fetchDepartments()
+  }, [])
+
   const form = useForm({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
+      department_id: '',
       subject: '',
       description: '',
       category: '',
@@ -61,6 +78,33 @@ export default function CustomerTicketForm({ open, onOpenChange, onSubmit }) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {departments.length > 0 && (
+              <FormField
+                control={form.control}
+                name="department_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departman</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Departman seçiniz" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="category"

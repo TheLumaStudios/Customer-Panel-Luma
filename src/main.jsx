@@ -1,9 +1,22 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import './index.css'
+import { HelmetProvider } from 'react-helmet-async'
+import { Toaster } from 'sonner'
 import App from './App.jsx'
+import './index.css'
+import { initSentry } from './lib/sentry'
+
+// Sentry
+initSentry()
+
+// React Scan (dev only)
+if (import.meta.env.DEV) {
+  import('react-scan').then(({ scan }) => {
+    scan({ enabled: true, log: false })
+  })
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,13 +31,19 @@ const queryClient = new QueryClient({
   },
 })
 
-console.log('QueryClient created with config')
-
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </StrictMode>,
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <Toaster richColors position="top-right" closeButton />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </HelmetProvider>
+  </React.StrictMode>,
 )
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}

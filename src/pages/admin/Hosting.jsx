@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Plus, Pencil, Trash2, AlertCircle, Server, PlayCircle, Pause, Play, XCircle, Users, CheckCircle, XOctagon, Clock, Download } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -260,7 +261,7 @@ export default function Hosting() {
       expired: 'Süresi Doldu',
       suspended: 'Askıda',
     }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getPackageTypeBadge = (packageType) => {
@@ -285,11 +286,11 @@ export default function Hosting() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Hosting Paketleri</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Hosting Paketleri</h1>
+          <p className="page-description">
             Tüm hosting paketlerini görüntüleyin ve yönetin
           </p>
         </div>
@@ -307,60 +308,60 @@ export default function Hosting() {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Hosting</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.provisioned} tanesi aktif
-            </p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Toplam Hosting</p>
+            <div className="stat-card-icon bg-blue-100">
+              <Users className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="stat-card-value">{stats.total}</p>
+          <p className="text-xs text-muted-foreground">
+            {stats.provisioned} tanesi aktif
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktif</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">
-              Çalışan hostingler
-            </p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Aktif</p>
+            <div className="stat-card-icon bg-green-100">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-green-600">{stats.active}</p>
+          <p className="text-xs text-muted-foreground">
+            Çalışan hostingler
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Askıda</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.suspended}</div>
-            <p className="text-xs text-muted-foreground">
-              Askıya alınmış
-            </p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Askıda</p>
+            <div className="stat-card-icon bg-orange-100">
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-orange-600">{stats.suspended}</p>
+          <p className="text-xs text-muted-foreground">
+            Askıya alınmış
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Provision Gerekli</CardTitle>
-            <XOctagon className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.notProvisioned}</div>
-            <p className="text-xs text-muted-foreground">
-              cPanel'de oluşturulacak
-            </p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Provision Gerekli</p>
+            <div className="stat-card-icon bg-red-100">
+              <XOctagon className="h-4 w-4 text-red-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-red-600">{stats.notProvisioned}</p>
+          <p className="text-xs text-muted-foreground">
+            cPanel'de oluşturulacak
+          </p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>Hosting Listesi</CardTitle>
           <CardDescription>

@@ -36,6 +36,8 @@ export default function LandingHeader() {
       items: [
         { label: 'Linux Hosting', href: '/linux-hosting' },
         { label: 'WordPress Hosting', href: '/wordpress-hosting' },
+        { label: 'Plesk Hosting', href: '/plesk-hosting' },
+        { label: 'Reseller Hosting', href: '/reseller-hosting' },
       ]
     },
     {
@@ -108,11 +110,8 @@ export default function LandingHeader() {
         <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Server className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span>Luma</span>
+            <Link to="/" className="flex items-center">
+              <img src="/luma.png" alt="Luma" className="h-8" />
             </Link>
 
             {/* Desktop Navigation */}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Plus, Pencil, Trash2, Server, Globe, Activity, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -163,11 +164,11 @@ export default function Servers() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Sunucular</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Sunucular</h1>
+          <p className="page-description">
             Sunucularınızı yönetin ve erişim bilgilerini saklayın
           </p>
         </div>
@@ -177,7 +178,7 @@ export default function Servers() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>Sunucu Listesi</CardTitle>
           <CardDescription>
@@ -268,11 +269,7 @@ export default function Servers() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {server.is_active ? (
-                          <Badge variant="default">Aktif</Badge>
-                        ) : (
-                          <Badge variant="secondary">Pasif</Badge>
-                        )}
+                        <StatusBadge status={server.is_active ? 'active' : 'inactive'} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">

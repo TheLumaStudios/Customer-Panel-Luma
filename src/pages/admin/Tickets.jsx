@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTickets, useCreateTicket, useUpdateTicket, useDeleteTicket } from '@/hooks/useTickets'
 import { useCustomers } from '@/hooks/useCustomers'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Pencil, Trash2, Eye, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -19,6 +22,19 @@ export default function Tickets() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingTicket, setEditingTicket] = useState(null)
+  const [departments, setDepartments] = useState([])
+  const [filterDepartmentId, setFilterDepartmentId] = useState('all')
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const { data } = await supabase
+        .from('ticket_departments')
+        .select('*')
+        .order('name')
+      if (data) setDepartments(data)
+    }
+    fetchDepartments()
+  }, [])
 
   const handleCreate = () => {
     setEditingTicket(null)
@@ -94,106 +110,104 @@ export default function Tickets() {
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      open: 'default',
-      in_progress: 'secondary',
-      resolved: 'default',
-      closed: 'secondary',
-    }
-    const labels = {
-      open: 'Açık',
-      in_progress: 'İşlemde',
-      resolved: 'Çözüldü',
-      closed: 'Kapalı',
-    }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getPriorityBadge = (priority) => {
-    const variants = {
-      low: 'secondary',
-      medium: 'default',
-      high: 'destructive',
-      urgent: 'destructive',
-    }
-    const labels = {
-      low: 'Düşük',
-      medium: 'Orta',
-      high: 'Yüksek',
-      urgent: 'Acil',
-    }
-    return <Badge variant={variants[priority]}>{labels[priority]}</Badge>
+    return <StatusBadge status={priority} />
   }
 
+  // Filter tickets by department
+  const filteredTickets = filterDepartmentId === 'all'
+    ? tickets
+    : tickets?.filter(t => t.department_id === filterDepartmentId)
+
   // Calculate summary statistics
-  const openTickets = tickets?.filter(t => t.status === 'open').length || 0
-  const inProgressTickets = tickets?.filter(t => t.status === 'in_progress').length || 0
-  const resolvedTickets = tickets?.filter(t => t.status === 'resolved').length || 0
+  const openTickets = filteredTickets?.filter(t => t.status === 'open').length || 0
+  const inProgressTickets = filteredTickets?.filter(t => t.status === 'in_progress').length || 0
+  const resolvedTickets = filteredTickets?.filter(t => t.status === 'resolved').length || 0
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Destek Talepleri</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Destek Talepleri</h1>
+          <p className="page-description">
             Tüm destek taleplerini görüntüleyin ve yönetin
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Talep
-        </Button>
+        <div className="flex items-center gap-3">
+          {departments.length > 0 && (
+            <Select value={filterDepartmentId} onValueChange={setFilterDepartmentId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Departman Filtresi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Departmanlar</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Talep
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Açık Talepler</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Bekleyen destek talepleri
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">İşlemde</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inProgressTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Üzerinde çalışılan talepler
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Çözüldü</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resolvedTickets}</div>
-            <p className="text-xs text-muted-foreground">
-              Çözülen talepler
-            </p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Açık Talepler</p>
+            <div className="stat-card-icon bg-blue-100">
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="stat-card-value">{openTickets}</p>
+          <p className="text-xs text-muted-foreground">
+            Bekleyen destek talepleri
+          </p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">İşlemde</p>
+            <div className="stat-card-icon bg-amber-100">
+              <MessageSquare className="h-4 w-4 text-amber-600" />
+            </div>
+          </div>
+          <p className="stat-card-value">{inProgressTickets}</p>
+          <p className="text-xs text-muted-foreground">
+            Üzerinde çalışılan talepler
+          </p>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Çözüldü</p>
+            <div className="stat-card-icon bg-emerald-100">
+              <MessageSquare className="h-4 w-4 text-emerald-600" />
+            </div>
+          </div>
+          <p className="stat-card-value">{resolvedTickets}</p>
+          <p className="text-xs text-muted-foreground">
+            Çözülen talepler
+          </p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>Talep Listesi</CardTitle>
           <CardDescription>
-            Toplam {tickets?.length || 0} destek talebi
+            Toplam {filteredTickets?.length || 0} destek talebi
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {tickets?.length === 0 ? (
+          {filteredTickets?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Henüz destek talebi bulunmuyor.
             </div>
@@ -213,7 +227,7 @@ export default function Tickets() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tickets?.map((ticket) => (
+                {filteredTickets?.map((ticket) => (
                   <TableRow key={ticket.id}>
                     <TableCell className="font-medium">
                       #{ticket.ticket_number}

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import {
   Dialog,
   DialogContent,
@@ -241,13 +242,7 @@ export default function Employees() {
   }
 
   const getStatusBadge = (status) => {
-    const config = {
-      active: { label: 'Aktif', className: 'bg-green-100 text-green-800 border-green-200' },
-      inactive: { label: 'Pasif', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      terminated: { label: 'İşten Ayrıldı', className: 'bg-red-100 text-red-800 border-red-200' },
-    }
-    const { label, className } = config[status] || config.active
-    return <Badge variant="outline" className={className}>{label}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const formatCurrency = (amount, currency = 'TRY') => {
@@ -268,11 +263,11 @@ export default function Employees() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Çalışanlar</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Çalışanlar</h1>
+          <p className="page-description">
             Personel ve çalışan yönetimi
           </p>
         </div>
@@ -284,52 +279,52 @@ export default function Employees() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Çalışan</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">Kayıtlı personel</p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Toplam Çalışan</p>
+            <div className="stat-card-icon bg-blue-100">
+              <Users className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-blue-600">{stats.total}</p>
+          <p className="text-xs text-muted-foreground">Kayıtlı personel</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktif</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">Çalışan personel</p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Aktif</p>
+            <div className="stat-card-icon bg-green-100">
+              <UserCheck className="h-4 w-4 text-green-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-green-600">{stats.active}</p>
+          <p className="text-xs text-muted-foreground">Çalışan personel</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pasif</CardTitle>
-            <UserX className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.inactive}</div>
-            <p className="text-xs text-muted-foreground">Pasif durumdaki</p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Pasif</p>
+            <div className="stat-card-icon bg-yellow-100">
+              <UserX className="h-4 w-4 text-yellow-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-yellow-600">{stats.inactive}</p>
+          <p className="text-xs text-muted-foreground">Pasif durumdaki</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">İşten Ayrılan</CardTitle>
-            <UserX className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.terminated}</div>
-            <p className="text-xs text-muted-foreground">İşten ayrılmış</p>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">İşten Ayrılan</p>
+            <div className="stat-card-icon bg-red-100">
+              <UserX className="h-4 w-4 text-red-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-red-600">{stats.terminated}</p>
+          <p className="text-xs text-muted-foreground">İşten ayrılmış</p>
+        </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

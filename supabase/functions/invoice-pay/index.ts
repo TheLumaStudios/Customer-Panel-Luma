@@ -208,6 +208,59 @@ serve(async (req) => {
       customer
     }
 
+    // Auto-unsuspend if service was suspended
+    if (invoice.related_service_id && invoice.related_service_type === 'hosting') {
+      const { data: hosting } = await supabaseAdmin
+        .from('hosting')
+        .select('*, server:servers(*)')
+        .eq('id', invoice.related_service_id)
+        .eq('status', 'suspended')
+        .single()
+
+      if (hosting && hosting.cpanel_username) {
+        try {
+          const WHM_HOST = hosting.server?.hostname || Deno.env.get('WHM_HOST')
+          const WHM_USER = hosting.server?.username || Deno.env.get('WHM_USERNAME') || 'root'
+          const WHM_TOKEN = hosting.server?.api_token || Deno.env.get('WHM_API_TOKEN')
+
+          if (WHM_HOST && WHM_TOKEN) {
+            const params = new URLSearchParams({ user: hosting.cpanel_username })
+            const whmUrl = `https://${WHM_HOST}:2087/json-api/unsuspendacct?${params.toString()}`
+            await fetch(whmUrl, {
+              method: 'GET',
+              headers: { 'Authorization': `WHM ${WHM_USER}:${WHM_TOKEN}` },
+            })
+
+            await supabaseAdmin.from('hosting').update({
+              status: 'active',
+              suspended_at: null
+            }).eq('id', hosting.id)
+
+            console.log('✅ Auto-unsuspended hosting:', hosting.id)
+          }
+        } catch (err) {
+          console.error('⚠️ Auto-unsuspend failed:', err.message)
+        }
+      }
+    }
+
+    // Add to provisioning queue for new service invoices
+    if (invoice.related_service_type && !invoice.related_service_id) {
+      // New service - needs provisioning
+      const invoiceItems = await supabaseAdmin.from('invoice_items').select('*').eq('invoice_id', invoice.id)
+
+      for (const item of invoiceItems.data || []) {
+        if (item.service_type) {
+          await supabaseAdmin.from('provisioning_queue').insert({
+            invoice_id: invoice.id,
+            customer_id: invoice.customer_id,
+            service_type: item.service_type,
+            service_config: { invoice_item_id: item.id, description: item.description },
+          })
+        }
+      }
+    }
+
     console.log('✅ Invoice paid:', invoice.invoice_number, 'Method:', payment_method)
 
     return new Response(

@@ -24,13 +24,20 @@ import {
   Edit,
   MapPin,
   Key,
-  Send
+  Send,
+  Eye,
+  FolderOpen
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import { InternalNotes } from '@/components/shared/InternalNotes'
+import { HealthScoreBadge } from '@/components/shared/HealthScoreBadge'
+import { WorkspaceManager } from '@/components/shared/WorkspaceManager'
+import { BrandingSettings } from '@/components/shared/BrandingSettings'
 import CustomerForm from '@/components/customers/CustomerForm'
 import SendPasswordModal from '@/components/customers/SendPasswordModal'
 import { prepareCustomerAuth, sendPasswordSMS } from '@/lib/api/auth'
+import { supabase } from '@/lib/supabase'
 
 export default function CustomerDetails() {
   const { id } = useParams()
@@ -91,6 +98,30 @@ export default function CustomerDetails() {
   const activeServices = customerDomains.filter(d => d.status === 'active').length +
                         customerHosting.filter(h => h.status === 'active').length
   const openTickets = customerTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length
+
+  const handleGhostLogin = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL
+      const url = baseUrl.includes('/rest/v1') ? baseUrl.replace('/rest/v1', '/functions/v1') : `${baseUrl}/functions/v1`
+      const res = await fetch(`${url}/ghost-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ customer_id: customer.id }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+
+      // Store ghost session and open magic link in new tab
+      localStorage.setItem('ghost_session_id', result.ghost_session_id)
+      if (result.magic_link) {
+        window.open(result.magic_link, '_blank')
+      }
+      toast.success('Ghost login oluşturuldu', { description: `${result.customer_name} olarak giriş yapılıyor...` })
+    } catch (err) {
+      toast.error('Ghost login hatası', { description: err.message })
+    }
+  }
 
   const handleEdit = () => {
     setFormOpen(true)
@@ -216,11 +247,17 @@ export default function CustomerDetails() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{customer.full_name || customer.customer_code}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">{customer.full_name || customer.customer_code}</h1>
+              <HealthScoreBadge score={customer?.health_score} />
+            </div>
             <p className="text-muted-foreground mt-1">Müşteri Detayları</p>
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleGhostLogin}>
+            <Eye className="h-3.5 w-3.5" /> Müşteri Olarak Gör
+          </Button>
           <Button variant="outline" onClick={handleSendPassword}>
             <Key className="h-4 w-4 mr-2" />
             Panel Şifresi Gönder
@@ -231,6 +268,20 @@ export default function CustomerDetails() {
           </Button>
         </div>
       </div>
+
+      {/* Workspace Manager */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FolderOpen className="h-5 w-5" />
+            Projeler (Workspace)
+          </CardTitle>
+          <CardDescription>Müşteri hizmetlerini projelere göre gruplandırın</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WorkspaceManager customerId={id} />
+        </CardContent>
+      </Card>
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -380,6 +431,22 @@ export default function CustomerDetails() {
               </CardContent>
             </Card>
           )}
+
+          {/* Internal Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                İç Notlar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InternalNotes entityType="customer" entityId={customer?.id} />
+            </CardContent>
+          </Card>
+
+          {/* Branding Settings */}
+          <BrandingSettings customerId={id} />
         </div>
 
         {/* Right Column - Services and Activity */}

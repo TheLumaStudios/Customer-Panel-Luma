@@ -39,6 +39,7 @@ const customerSchema = z.object({
   // Account Info
   customer_code: z.string().min(1, 'Müşteri kodu gerekli'),
   status: z.enum(['active', 'inactive']).default('active'),
+  customer_type: z.enum(['software', 'host']).default('host'),
 
   // Personal/Company Info
   full_name: z.string().min(1, 'Ad soyad gerekli'),
@@ -72,12 +73,13 @@ const customerSchema = z.object({
   notes: z.string().optional(),
 })
 
-export default function CustomerForm({ open, onOpenChange, customer, onSubmit }) {
+export default function CustomerForm({ open, onOpenChange, customer, onSubmit, embedded = false }) {
   const [sameAsBilling, setSameAsBilling] = useState(customer?.same_as_billing ?? true)
 
   const getDefaultValues = () => ({
     customer_code: customer?.customer_code || `CUST-${Math.floor(10000 + Math.random() * 90000)}`,
     status: customer?.status || 'active',
+    customer_type: customer?.customer_type || 'host',
     full_name: customer?.full_name || customer?.profile?.full_name || '',
     company_name: customer?.company_name || customer?.profile?.company_name || '',
     tc_no: customer?.tc_no || customer?.profile?.tc_no || '',
@@ -125,6 +127,525 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
     }
   }
 
+  const formContent = (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        {/* Account Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Hash className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Hesap Bilgileri</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="customer_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Müşteri Kodu *</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="CUST-12345" className="font-mono bg-white border-gray-300" />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Benzersiz müşteri tanımlama kodu
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Hesap Durumu *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-white border-gray-300">
+                        <SelectValue placeholder="Durum seçiniz" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="active">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-500" />
+                          Aktif
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="inactive">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-gray-400" />
+                          Pasif
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="customer_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Müşteri Tipi *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-white border-gray-300">
+                        <SelectValue placeholder="Tip seçiniz" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="host">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                          Host Müşterisi
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="software">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-violet-500" />
+                          Yazılım Müşterisi
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-xs">
+                    Yazılım müşterilerine ilk yıl ücretsiz hosting sağlanır
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Personal/Company Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Kişisel / Şirket Bilgileri</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ad Soyad / Şirket Yetkili *</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Ahmet Yılmaz" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="company_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Şirket Adı</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input {...field} placeholder="ABC Teknoloji A.Ş." className="pl-10 bg-white border-gray-300" />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="tc_no"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>TC Kimlik No</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="12345678901" maxLength={11} className="font-mono bg-white border-gray-300" />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Bireysel müşteriler için
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vkn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vergi Kimlik No (VKN)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input {...field} placeholder="1234567890" maxLength={10} className="pl-10 font-mono bg-white border-gray-300" />
+                    </div>
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Kurumsal müşteriler için
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tax_office"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vergi Dairesi</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Contact Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">İletişim Bilgileri</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-posta Adresi *</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="ornek@email.com"
+                        className="pl-10 bg-white border-gray-300"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Giriş ve bildirimler için kullanılacak
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefon</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        placeholder="0555 123 45 67"
+                        className="pl-10 bg-white border-gray-300"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="fax"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fax</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="0212 345 67 89" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Website</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        placeholder="www.example.com"
+                        className="pl-10 bg-white border-gray-300"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Billing Address Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <MapPin className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Fatura Adresi</h3>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="billing_address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Adres</FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} className="bg-white border-gray-300" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <FormField
+              control={form.control}
+              name="billing_city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>İl</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="İstanbul" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billing_district"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>İlçe</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billing_postal_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Posta Kodu</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="34000" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billing_country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ülke</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Türkiye" className="bg-white border-gray-300" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Shipping Address Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Sevkiyat Adresi</h3>
+            </div>
+            <FormField
+              control={form.control}
+              name="same_as_billing"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(e) => {
+                        field.onChange(e.target.checked)
+                        setSameAsBilling(e.target.checked)
+                      }}
+                      className="h-4 w-4"
+                    />
+                  </FormControl>
+                  <FormLabel className="!mt-0 text-sm font-normal">Fatura adresi ile aynı</FormLabel>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {!sameAsBilling && (
+            <>
+              <FormField
+                control={form.control}
+                name="shipping_address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adres</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="shipping_city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>İl</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="İstanbul" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="shipping_district"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>İlçe</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Kadıköy" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="shipping_postal_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Posta Kodu</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="34000" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="shipping_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ülke</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Türkiye" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Notes Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Notlar</h3>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>İç Notlar</FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="Müşteri hakkında özel notlar, hatırlatmalar..." rows={3} className="bg-white border-gray-300" />
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Bu notlar sadece admin tarafından görülebilir
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-6 border-t">
+          <p className="text-sm text-muted-foreground">
+            * Zorunlu alanlar
+          </p>
+          <div className="flex gap-3">
+            {!embedded && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="min-w-[100px]"
+              >
+                İptal
+              </Button>
+            )}
+            <Button type="submit" className="min-w-[100px]">
+              {customer ? 'Güncelle' : 'Kaydet'}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </Form>
+  )
+
+  if (embedded) return formContent
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
@@ -136,485 +657,7 @@ export default function CustomerForm({ open, onOpenChange, customer, onSubmit })
             Müşteri bilgilerini doldurun. Tüm zorunlu alanlar (*) ile işaretlenmiştir.
           </DialogDescription>
         </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-            {/* Account Information Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <Hash className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Hesap Bilgileri</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="customer_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Müşteri Kodu *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="CUST-12345" className="font-mono bg-white border-gray-300" />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Benzersiz müşteri tanımlama kodu
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hesap Durumu *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-gray-300">
-                            <SelectValue placeholder="Durum seçiniz" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="active">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-green-500" />
-                              Aktif
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="inactive">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-gray-400" />
-                              Pasif
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Personal/Company Information Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Kişisel / Şirket Bilgileri</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ad Soyad / Şirket Yetkili *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ahmet Yılmaz" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="company_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Şirket Adı</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input {...field} placeholder="ABC Teknoloji A.Ş." className="pl-10 bg-white border-gray-300" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="tc_no"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>TC Kimlik No</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="12345678901" maxLength={11} className="font-mono bg-white border-gray-300" />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Bireysel müşteriler için
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="vkn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vergi Kimlik No (VKN)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input {...field} placeholder="1234567890" maxLength={10} className="pl-10 font-mono bg-white border-gray-300" />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Kurumsal müşteriler için
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="tax_office"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vergi Dairesi</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Contact Information Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">İletişim Bilgileri</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>E-posta Adresi *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            {...field}
-                            type="email"
-                            placeholder="ornek@email.com"
-                            className="pl-10 bg-white border-gray-300"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Giriş ve bildirimler için kullanılacak
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefon</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            {...field}
-                            placeholder="0555 123 45 67"
-                            className="pl-10 bg-white border-gray-300"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="fax"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fax</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="0212 345 67 89" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Website</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            {...field}
-                            placeholder="www.example.com"
-                            className="pl-10 bg-white border-gray-300"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Billing Address Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <MapPin className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Fatura Adresi</h3>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="billing_address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Adres</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} className="bg-white border-gray-300" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <FormField
-                  control={form.control}
-                  name="billing_city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>İl</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="İstanbul" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="billing_district"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>İlçe</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Kadıköy" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="billing_postal_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Posta Kodu</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="34000" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="billing_country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ülke</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Türkiye" className="bg-white border-gray-300" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Shipping Address Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">Sevkiyat Adresi</h3>
-                </div>
-                <FormField
-                  control={form.control}
-                  name="same_as_billing"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 space-y-0">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked)
-                            setSameAsBilling(e.target.checked)
-                          }}
-                          className="h-4 w-4"
-                        />
-                      </FormControl>
-                      <FormLabel className="!mt-0 text-sm font-normal">Fatura adresi ile aynı</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {!sameAsBilling && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="shipping_address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Adres</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} placeholder="Cadde, sokak, bina no, daire no" rows={2} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="shipping_city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>İl</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="İstanbul" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="shipping_district"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>İlçe</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Kadıköy" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="shipping_postal_code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Posta Kodu</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="34000" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="shipping_country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ülke</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Türkiye" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Notes Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Notlar</h3>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>İç Notlar</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Müşteri hakkında özel notlar, hatırlatmalar..." rows={3} className="bg-white border-gray-300" />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Bu notlar sadece admin tarafından görülebilir
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-6 border-t">
-              <p className="text-sm text-muted-foreground">
-                * Zorunlu alanlar
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="min-w-[100px]"
-                >
-                  İptal
-                </Button>
-                <Button type="submit" className="min-w-[100px]">
-                  {customer ? 'Güncelle' : 'Kaydet'}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </Form>
+        {formContent}
       </DialogContent>
     </Dialog>
   )

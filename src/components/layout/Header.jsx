@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Bell, Check, X, ShoppingCart, Trash2 } from 'lucide-react'
+import { Bell, Check, X, ShoppingCart, Trash2, Code, Server } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -14,6 +14,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { useCart } from '@/contexts/CartContext'
+import { useCustomerView } from '@/contexts/CustomerViewContext'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { useExchangeRate } from '@/hooks/useCurrency'
 import { convertUsdToTry } from '@/lib/api/currency'
 import Breadcrumbs from './Breadcrumbs'
@@ -23,6 +25,9 @@ export default function Header() {
   const location = useLocation()
   const { cart, cartCount, cartTotal, currency, removeFromCart } = useCart()
   const { data: exchangeRate } = useExchangeRate()
+  const { viewMode, changeView } = useCustomerView()
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'employee'
 
   // Mock notifications - In production, fetch from API
   const [notifications] = useState([
@@ -249,6 +254,44 @@ export default function Header() {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Customer View Switcher - Admin/Employee only */}
+        {isAdmin && (
+          <div className="flex items-center bg-muted rounded-lg p-0.5 ml-1">
+            <button
+              onClick={() => changeView('all')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'all'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Tümü
+            </button>
+            <button
+              onClick={() => changeView('software')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'software'
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Code className="h-3 w-3" />
+              Yazılım
+            </button>
+            <button
+              onClick={() => changeView('host')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'host'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Server className="h-3 w-3" />
+              Host
+            </button>
+          </div>
+        )}
       </div>
     </header>
   )

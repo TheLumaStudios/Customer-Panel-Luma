@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Plus, Pencil, Trash2, Server, Cpu, HardDrive, RefreshCw } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -113,7 +114,7 @@ export default function VDS() {
       expired: 'Süresi Dolmuş',
       terminated: 'Sonlandırılmış',
     }
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
+    return <StatusBadge status={status} />
   }
 
   const getTypeBadge = (type) => {
@@ -130,11 +131,11 @@ export default function VDS() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">VDS / VPS</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">VDS / VPS</h1>
+          <p className="page-description">
             Sanal sunucularınızı görüntüleyin ve yönetin
           </p>
         </div>
@@ -152,49 +153,49 @@ export default function VDS() {
 
       {/* Statistics */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam VDS</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Toplam VDS</p>
+            <div className="stat-card-icon bg-blue-100">
+              <Server className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="stat-card-value">{stats.total}</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktif</CardTitle>
-            <Server className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Aktif</p>
+            <div className="stat-card-icon bg-green-100">
+              <Server className="h-4 w-4 text-green-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-green-600">{stats.active}</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Askıda</CardTitle>
-            <Server className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.suspended}</div>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Askıda</p>
+            <div className="stat-card-icon bg-yellow-100">
+              <Server className="h-4 w-4 text-yellow-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-yellow-600">{stats.suspended}</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Süresi Dolmuş</CardTitle>
-            <Server className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.expired}</div>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between">
+            <p className="stat-card-label">Süresi Dolmuş</p>
+            <div className="stat-card-icon bg-red-100">
+              <Server className="h-4 w-4 text-red-600" />
+            </div>
+          </div>
+          <p className="stat-card-value text-red-600">{stats.expired}</p>
+        </div>
       </div>
 
       {/* VDS List */}
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>VDS Listesi</CardTitle>
           <CardDescription>

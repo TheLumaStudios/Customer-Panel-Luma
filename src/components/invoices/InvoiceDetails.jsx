@@ -28,7 +28,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     // Get settings or use defaults
     const companyInfo = {
       name: settings?.company_name || 'SIRKET ADIN',
-      slogan: settings?.company_slogan || 'Musteri ve Hizmet Yonetim Sistemleri',
+      slogan: settings?.company_slogan || 'Müşteri ve Hizmet Yönetim Sistemleri',
       website: settings?.company_website || 'www.sirketiniz.com',
       email: settings?.company_email || 'info@sirketiniz.com',
       phone: settings?.company_phone || '+90 (212) 123 45 67',
@@ -38,7 +38,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     }
 
     const bankInfo = {
-      name: settings?.bank_name || 'Ziraat Bankasi',
+      name: settings?.bank_name || 'Ziraat Bankası',
       iban: settings?.bank_iban || 'TR00 0000 0000 0000 0000 0000 00',
       accountName: settings?.bank_account_name || 'SIRKET ADIN',
       swift: settings?.bank_swift || '',
@@ -51,8 +51,8 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     }
 
     const invoiceSettings = {
-      footerText: settings?.invoice_footer_text || 'Bu belge elektronik ortamda olusturulmus olup, dijital imza ile gecerlidir.',
-      legalText: settings?.invoice_legal_text || 'Isbu sozlesme elektronik ortamda taraflarin karsilikli irade beyani ile akdedilmistir. Sistem tarafindan atanan benzersiz islem numarasi ve zaman damgasi kayitlari kesin delil niteligindedir.',
+      footerText: settings?.invoice_footer_text || 'Bu belge elektronik ortamda oluşturulmuş olup, dijital imza ile geçerlidir.',
+      legalText: settings?.invoice_legal_text || 'İşbu sözleşme elektronik ortamda tarafların karşılıklı irade beyanı ile akdedilmiştir. Sistem tarafından atanan benzersiz işlem numarası ve zaman damgası kayıtları kesin delil niteliğindedir.',
       notes: settings?.invoice_notes || '',
       taxRate: Number(settings?.default_tax_rate || 0),
     }
@@ -146,7 +146,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
       doc.text(`VKN: ${companyInfo.taxNumber}`, 24, yPos)
     }
 
-    // Right Box - Musteri Bilgileri (TO)
+    // Right Box - Müşteri Bilgileri (TO)
     doc.setFontSize(7)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(120, 120, 120)
@@ -201,7 +201,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
 
     if (invoice.payment_date) {
       doc.setFont('helvetica', 'normal')
-      doc.text('Odeme Tarihi:', 117, 123)
+      doc.text('Ödeme Tarihi:', 117, 123)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(34, 197, 94)
       doc.text(formatDate(invoice.payment_date), 190, 123, { align: 'right' })
@@ -209,9 +209,9 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
 
     // Status badge
     const statusY = invoice.payment_date ? 128 : 123
-    const statusText = invoice.status === 'paid' ? 'ODENDI' :
+    const statusText = invoice.status === 'paid' ? 'ÖDENDİ' :
                        invoice.status === 'pending' ? 'BEKLEMEDE' :
-                       invoice.status === 'overdue' ? 'VADESI GECTI' : 'IPTAL'
+                       invoice.status === 'overdue' ? 'VADESİ GEÇTİ' : 'İPTAL'
     const statusBg = invoice.status === 'paid' ? [220, 252, 231] :
                         invoice.status === 'pending' ? [254, 249, 195] :
                         invoice.status === 'overdue' ? [254, 226, 226] : [243, 244, 246]
@@ -254,11 +254,11 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(0, 0, 0)
-    doc.text('FATURA KALEMLERI', 20, 144)
+    doc.text('FATURA KALEMLERİ', 20, 144)
 
     autoTable(doc, {
       startY: 148,
-      head: [['#', 'ACIKLAMA', 'MIKTAR', 'BIRIM FIYAT', 'TUTAR']],
+      head: [['#', 'AÇIKLAMA', 'MİKTAR', 'BİRİM FİYAT', 'TUTAR']],
       body: tableData,
       theme: 'plain',
       headStyles: {
@@ -340,7 +340,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     doc.setTextColor(0, 0, 0)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
-    doc.text('ODENECEK TUTAR:', totalsX + 2, finalY + 21)
+    doc.text('ÖDENECEK TUTAR:', totalsX + 2, finalY + 21)
     doc.setFontSize(13)
     doc.text(grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL', totalsX + totalsWidth - 2, finalY + 21, { align: 'right' })
 
@@ -352,7 +352,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(0, 0, 0)
-      doc.text('ODEME BILGILERI', 20, extraInfoY)
+      doc.text('ÖDEME BİLGİLERİ', 20, extraInfoY)
 
       doc.setFillColor(252, 252, 252)
       doc.setDrawColor(230, 230, 230)
@@ -426,7 +426,7 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
     doc.setFontSize(5)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(180, 180, 180)
-    doc.text(`Olusturulma: ${new Date().toLocaleString('tr-TR')}`, 195, 292, { align: 'right' })
+    doc.text(`Oluşturulma: ${new Date().toLocaleString('tr-TR')}`, 195, 292, { align: 'right' })
 
     // Page number - bottom left
     doc.text('Sayfa 1/1', 20, 292)

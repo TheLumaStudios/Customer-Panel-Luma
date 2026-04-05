@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Plus, Pencil, Trash2, Check, X, Download } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import {
@@ -134,11 +135,11 @@ export default function HostingPackages() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Hosting Paketleri</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Hosting Paketleri</h1>
+          <p className="page-description">
             Hosting paketlerinizi tanımlayın ve yönetin
           </p>
         </div>
@@ -154,7 +155,7 @@ export default function HostingPackages() {
         </div>
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-card">
         <CardHeader>
           <CardTitle>Paket Listesi</CardTitle>
           <CardDescription>
@@ -211,11 +212,7 @@ export default function HostingPackages() {
                         {pkg.yearly_price ? `${pkg.yearly_price} ₺` : '-'}
                       </TableCell>
                       <TableCell>
-                        {pkg.is_active ? (
-                          <Badge variant="default">Aktif</Badge>
-                        ) : (
-                          <Badge variant="secondary">Pasif</Badge>
-                        )}
+                        <StatusBadge status={pkg.is_active ? 'active' : 'inactive'} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">

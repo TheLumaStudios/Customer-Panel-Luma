@@ -19,7 +19,13 @@ import {
   UserCog,
   CheckSquare,
   Sliders,
-  FileSignature
+  FileSignature,
+  Mail,
+  Building,
+  BookOpen,
+  Megaphone,
+  Wifi,
+  Key
 } from 'lucide-react'
 
 const adminMenuItems = [
@@ -31,12 +37,17 @@ const adminMenuItems = [
   { name: 'Domainler', path: '/admin/domains', icon: Globe },
   { name: 'Hosting', path: '/admin/hosting', icon: Server },
   { name: 'Hosting Paketleri', path: '/admin/hosting-packages', icon: Package },
+  { name: 'Ürün Paketleri', path: '/admin/product-packages', icon: Package },
   { name: 'VDS / VPS', path: '/admin/vds', icon: Monitor },
   { name: 'Sunucular', path: '/admin/servers', icon: HardDrive },
   { name: 'Faturalar', path: '/admin/invoices', icon: FileText },
   { name: 'Sözleşmeler', path: '/admin/contracts', icon: FileSignature },
   { name: 'Onaylar', path: '/admin/approvals', icon: CheckSquare },
   { name: 'Destek', path: '/admin/tickets', icon: Ticket },
+  { name: 'E-posta Şablonları', path: '/admin/email-templates', icon: Mail },
+  { name: 'Departmanlar', path: '/admin/ticket-departments', icon: Building },
+  { name: 'Bilgi Bankası', path: '/admin/knowledge-base', icon: BookOpen },
+  { name: 'Duyurular', path: '/admin/announcements', icon: Megaphone },
   { name: 'Sistem Ayarları', path: '/admin/system-settings', icon: Sliders },
   { name: 'Ayarlar', path: '/admin/settings', icon: Settings },
 ]
@@ -56,9 +67,12 @@ const customerMenuItems = [
   { name: 'Domain Ara', path: '/domain-search', icon: Search },
   { name: 'Domainlerim', path: '/domains', icon: Globe },
   { name: 'Hostingim', path: '/hosting', icon: Server },
-  { name: 'VDS / VPS', path: '/vds', icon: Cpu },
+  { name: 'VDS / VPS', path: '/my-vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
   { name: 'Destek', path: '/tickets', icon: Ticket },
+  { name: 'Bilgi Bankası', path: '/knowledge-base', icon: BookOpen },
+  { name: 'Ağ Durumu', path: '/network-status', icon: Wifi },
+  { name: 'API Anahtarları', path: '/api-keys', icon: Key },
   { name: 'Profil', path: '/profile', icon: Settings },
 ]
 
@@ -81,51 +95,66 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 h-screen bg-card border-r border-border flex flex-col">
-      <div className="p-6 border-b border-border flex-shrink-0">
-        <h1 className="text-2xl font-bold text-foreground">Luma Yazılım</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {role === 'admin' ? 'Admin Panel' : role === 'employee' ? 'Çalışan Paneli' : 'Müşteri Paneli'}
-        </p>
+    <aside className="w-64 h-screen bg-sidebar flex flex-col">
+      {/* Logo */}
+      <div className="p-5 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-sidebar-accent flex items-center justify-center shadow-lg shadow-primary/25">
+            <Server className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-white">Luma Yazılım</h1>
+            <p className="text-2xs text-sidebar-foreground">
+              {role === 'admin' ? 'Admin Panel' : role === 'employee' ? 'Çalışan Paneli' : 'Müşteri Paneli'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-thin">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = location.pathname === item.path
+          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
 
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  ? 'bg-sidebar-accent text-white shadow-sm shadow-primary/20'
+                  : 'text-sidebar-foreground hover:bg-white/5 hover:text-white'
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className={cn('h-4 w-4 flex-shrink-0', isActive ? 'text-white' : 'text-sidebar-foreground')} />
               {item.name}
             </Link>
           )
         })}
       </nav>
 
-      <div className="p-4 border-t border-border flex-shrink-0">
-        <div className="mb-3 px-4">
-          <p className="text-sm font-medium text-foreground truncate">
-            {profile?.full_name || 'Kullanıcı'}
-          </p>
-          <p className="text-xs text-muted-foreground truncate">
-            {profile?.email}
-          </p>
+      {/* User */}
+      <div className="p-3 border-t border-sidebar-border flex-shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="h-8 w-8 rounded-full bg-sidebar-accent/20 flex items-center justify-center text-xs font-bold text-sidebar-accent flex-shrink-0">
+            {(profile?.full_name || 'K')[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {profile?.full_name || 'Kullanıcı'}
+            </p>
+            <p className="text-2xs text-sidebar-foreground truncate">
+              {profile?.email}
+            </p>
+          </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground hover:bg-white/5 hover:text-white transition-all duration-150 w-full mt-1"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           Çıkış Yap
         </button>
       </div>

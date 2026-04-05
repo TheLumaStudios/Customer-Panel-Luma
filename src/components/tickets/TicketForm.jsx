@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { supabase } from '@/lib/supabase'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +26,7 @@ import { CustomerCombobox } from '@/components/ui/customer-combobox'
 
 const ticketSchema = z.object({
   customer_id: z.string().min(1, 'Müşteri seçimi gerekli'),
+  department_id: z.string().optional(),
   subject: z.string().min(1, 'Konu gerekli'),
   description: z.string().min(1, 'Açıklama gerekli'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
@@ -31,10 +34,24 @@ const ticketSchema = z.object({
 })
 
 export default function TicketForm({ open, onOpenChange, ticket, customers, onSubmit }) {
+  const [departments, setDepartments] = useState([])
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const { data } = await supabase
+        .from('ticket_departments')
+        .select('*')
+        .order('name')
+      if (data) setDepartments(data)
+    }
+    fetchDepartments()
+  }, [])
+
   const form = useForm({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       customer_id: ticket?.customer_id || '',
+      department_id: ticket?.department_id || '',
       subject: ticket?.subject || '',
       description: ticket?.description || '',
       priority: ticket?.priority || 'medium',
@@ -81,6 +98,33 @@ export default function TicketForm({ open, onOpenChange, ticket, customers, onSu
                 </FormItem>
               )}
             />
+
+            {departments.length > 0 && (
+              <FormField
+                control={form.control}
+                name="department_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departman</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Departman seçiniz" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

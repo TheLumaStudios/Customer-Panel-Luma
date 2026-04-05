@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import PasswordStrength from '@/components/shared/PasswordStrength'
+import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
+import { Github } from 'lucide-react'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -143,6 +147,7 @@ export default function RegisterPage() {
                 required
                 disabled={loading}
               />
+              <PasswordStrength password={formData.password} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Şifre Tekrar</Label>
@@ -161,6 +166,20 @@ export default function RegisterPage() {
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
+            </Button>
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">veya</span></div>
+            </div>
+            <Button variant="outline" className="w-full" type="button" onClick={async () => {
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: { redirectTo: window.location.origin + '/dashboard' },
+              })
+              if (error) toast.error('GitHub ile kayıt başarısız', { description: error.message })
+            }}>
+              <Github className="h-4 w-4 mr-2" />
+              GitHub ile Kayıt Ol
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               Zaten hesabınız var mı?{' '}

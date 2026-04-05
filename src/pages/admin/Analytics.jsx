@@ -3,6 +3,12 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, DollarSign, Users, Package, Calendar, CreditCard } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar
+} from 'recharts'
+
+const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4']
 
 export default function Analytics() {
   // Fetch all paid invoices
@@ -440,29 +446,134 @@ export default function Analytics() {
         </Card>
       </div>
 
-      {/* Monthly Revenue Trend */}
+      {/* Monthly Revenue Trend Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Aylık Gelir Trendi (Son 12 Ay)</CardTitle>
           <CardDescription>KDV hariç net gelir</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {Object.entries(monthlyRevenue).map(([month, revenue]) => {
+          {(() => {
+            const chartData = Object.entries(monthlyRevenue).map(([month, revenue]) => {
               const [year, monthNum] = month.split('-')
               const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
-              const monthName = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })
+              const label = date.toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })
+              return { month: label, gelir: revenue }
+            })
+            const hasData = chartData.some(d => d.gelir > 0)
 
-              return (
-                <div key={month} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <span className="text-sm font-medium">{monthName}</span>
-                  <span className="text-sm font-bold text-green-600">{formatCurrency(revenue)}</span>
-                </div>
-              )
-            })}
-          </div>
+            return hasData ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₺${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(value), 'Gelir']}
+                    labelStyle={{ fontWeight: 'bold' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="gelir"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#22c55e' }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-2">
+                {chartData.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <span className="text-sm font-medium">{item.month}</span>
+                    <span className="text-sm font-bold text-green-600">{formatCurrency(item.gelir)}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </CardContent>
       </Card>
+
+      {/* Subscription Distribution Pie Chart */}
+      {(hostings.length > 0 || vdsList.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Hizmet Türü Dağılımı</CardTitle>
+              <CardDescription>Hosting vs VDS/VPS abonelik sayısı</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Hosting', value: hostings.length },
+                      { name: 'VDS/VPS', value: vdsList.length },
+                    ].filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#8b5cf6" />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>MRR Kaynak Dağılımı</CardTitle>
+              <CardDescription>Aylık gelir kaynakları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const hostingMrr = mrrData.breakdown
+                  .filter(b => b.type === 'Hosting')
+                  .reduce((sum, b) => sum + b.monthly_equivalent, 0)
+                const vdsMrr = mrrData.breakdown
+                  .filter(b => b.type === 'VDS/VPS')
+                  .reduce((sum, b) => sum + b.monthly_equivalent, 0)
+                const pieData = [
+                  { name: 'Hosting', value: Math.round(hostingMrr * 100) / 100 },
+                  { name: 'VDS/VPS', value: Math.round(vdsMrr * 100) / 100 },
+                ].filter(d => d.value > 0)
+
+                return pieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ₺${value.toFixed(0)}`}
+                      >
+                        <Cell fill="#22c55e" />
+                        <Cell fill="#f59e0b" />
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(value)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-12">Henüz veri bulunmuyor</p>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
