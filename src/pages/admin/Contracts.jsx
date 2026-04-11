@@ -161,7 +161,6 @@ export default function Contracts() {
   }
 
   const handleViewApproval = (approval) => {
-    console.log('📋 Full Approval JSON:', JSON.stringify(approval, null, 2))
     setSelectedApproval(approval)
     setApprovalModalOpen(true)
   }

@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      console.log('Session:', session ? 'exists' : 'null')
       setUser(session?.user ?? null)
 
       if (session?.user) {
@@ -45,7 +44,6 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
         setUser(session?.user ?? null)
         if (session?.user) {
           await fetchProfile(session.user)
@@ -65,27 +63,10 @@ export const AuthProvider = ({ children }) => {
   const fetchProfile = async (user) => {
     try {
       const userId = user.id
-      console.log('Fetching profile for user:', userId)
-      console.log('User metadata:', user.user_metadata)
 
-      // First, try to use user metadata if available (fastest)
-      if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
-        console.log('Using user metadata as profile:', user.user_metadata)
-        const metadataProfile = {
-          id: userId,
-          email: user.email,
-          full_name: user.user_metadata.full_name || '',
-          role: user.user_metadata.role || 'customer',
-          customer_id: user.user_metadata.customer_id,
-          phone: user.user_metadata.phone || '',
-          company_name: user.user_metadata.company_name || '',
-        }
-        setProfile(metadataProfile)
-        setLoading(false)
-        return
-      }
-
-      // If no metadata, try profiles table
+      // Always read from the profiles table so admin-side edits
+      // (customers → profiles) are reflected immediately. We fall back to
+      // user_metadata only if the profiles row is missing.
       const response = await supabaseApi.get('/profiles', {
         params: {
           id: `eq.${userId}`,
@@ -93,16 +74,22 @@ export const AuthProvider = ({ children }) => {
         }
       })
 
-      console.log('Profile query result:', response.data)
-
-      let data = response.data?.[0] || null
+      const data = response.data?.[0] || null
 
       if (data) {
-        console.log('Profile found in table:', data)
         setProfile(data)
+      } else if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
+        setProfile({
+          id: userId,
+          email: user.email,
+          full_name: user.user_metadata.full_name || '',
+          role: user.user_metadata.role || 'customer',
+          customer_id: user.user_metadata.customer_id,
+          phone: user.user_metadata.phone || '',
+          company_name: user.user_metadata.company_name || '',
+        })
       } else {
         console.warn('No profile found for user:', userId)
-        // Create minimal profile from user email
         setProfile({
           id: userId,
           email: user.email,
@@ -190,8 +177,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       // If Supabase Auth fails, try customer_auth table
-      console.log('Supabase Auth failed, trying customer_auth...')
-
       try {
         const { data: customerAuthData } = await supabaseApi.get('/customer_auth', {
           params: {
@@ -246,7 +231,6 @@ export const AuthProvider = ({ children }) => {
                   company_name: customerAuth.customer?.company_name || '',
                 },
               ])
-              console.log('Profile created for customer_auth user')
             } catch (profileError) {
               console.error('Profile creation error:', profileError)
               // Don't throw - metadata fallback will work

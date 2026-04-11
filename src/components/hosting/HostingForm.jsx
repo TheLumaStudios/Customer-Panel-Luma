@@ -37,6 +37,17 @@ const hostingSchema = z.object({
   expiration_date: z.string().optional().or(z.literal('')).nullable(),
   server_location: z.string().optional().or(z.literal('')),
   status: z.enum(['active', 'suspended', 'expired']).default('active'),
+// cPanel provisioning identity (used by WHM API calls)
+  username: z.string().optional().or(z.literal('')),
+  domain: z.string().optional().or(z.literal('')),
+// Credentials shown to customer / copied from cPanel
+  cpanel_username: z.string().optional().or(z.literal('')),
+  cpanel_password: z.string().optional().or(z.literal('')),
+  ftp_username: z.string().optional().or(z.literal('')),
+  ftp_password: z.string().optional().or(z.literal('')),
+  server_ip: z.string().optional().or(z.literal('')),
+  nameserver_1: z.string().optional().or(z.literal('')),
+  nameserver_2: z.string().optional().or(z.literal('')),
 })
 
 export default function HostingForm({ open, onOpenChange, hosting, customers, onSubmit, preselectedCustomerId }) {
@@ -57,6 +68,15 @@ export default function HostingForm({ open, onOpenChange, hosting, customers, on
     expiration_date: hosting?.expiration_date || '',
     server_location: hosting?.server_location || '',
     status: hosting?.status || 'active',
+    username: hosting?.username || '',
+    domain: hosting?.domain || '',
+    cpanel_username: hosting?.cpanel_username || '',
+    cpanel_password: hosting?.cpanel_password || '',
+    ftp_username: hosting?.ftp_username || '',
+    ftp_password: hosting?.ftp_password || '',
+    server_ip: hosting?.server_ip || '',
+    nameserver_1: hosting?.nameserver_1 || '',
+    nameserver_2: hosting?.nameserver_2 || '',
   })
 
   const form = useForm({
@@ -88,6 +108,15 @@ export default function HostingForm({ open, onOpenChange, hosting, customers, on
         expiration_date: noExpirationDate || !data.expiration_date ? null : data.expiration_date,
         server_location: data.server_location || null,
         status: data.status,
+        username: data.username || null,
+        domain: data.domain || null,
+        cpanel_username: data.cpanel_username || null,
+        cpanel_password: data.cpanel_password || null,
+        ftp_username: data.ftp_username || null,
+        ftp_password: data.ftp_password || null,
+        server_ip: data.server_ip || null,
+        nameserver_1: data.nameserver_1 || null,
+        nameserver_2: data.nameserver_2 || null,
       }
 
       // Remove empty/null values for cleaner API call
@@ -97,7 +126,6 @@ export default function HostingForm({ open, onOpenChange, hosting, customers, on
         }
       })
 
-      console.log('Form submission data:', JSON.stringify(formattedData, null, 2))
       await onSubmit(formattedData)
       form.reset()
       onOpenChange(false)
@@ -112,7 +140,7 @@ export default function HostingForm({ open, onOpenChange, hosting, customers, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {hosting ? 'Hosting Paketi Düzenle' : 'Yeni Hosting Paketi Ekle'}
@@ -350,6 +378,148 @@ export default function HostingForm({ open, onOpenChange, hosting, customers, on
                 </FormItem>
               )}
             />
+
+            {/* Erişim Bilgileri */}
+            <div className="pt-4 border-t">
+              <h4 className="font-semibold text-sm mb-3">Erişim Bilgileri</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>cPanel Hesabı (username)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="örn: nefesai" />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        WHM API çağrılarında kullanılır (SSO, suspend, vs.)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="domain"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ana Domain</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="örn: ornek.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="server_ip"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Server IP</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="örn: 1.2.3.4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="cpanel_username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>cPanel Kullanıcı Adı</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="müşteriye gösterilen" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cpanel_password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>cPanel Şifre</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="text" placeholder="••••••••" autoComplete="off" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="ftp_username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>FTP Kullanıcı Adı</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ftp_password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>FTP Şifre</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="text" autoComplete="off" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="nameserver_1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nameserver 1</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="ns1.example.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="nameserver_2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nameserver 2</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="ns2.example.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button

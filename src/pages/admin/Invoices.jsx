@@ -93,15 +93,6 @@ export default function Invoices() {
   const total = invoicesData?.total || 0
 
   // Debug log
-  console.log('🔍 Invoice Debug:', {
-    invoicesData,
-    invoices,
-    invoicesLength: invoices.length,
-    total,
-    isLoading,
-    error
-  })
-
   const [newInvoiceData, setNewInvoiceData] = useState({
     customer_id: '',
     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -115,12 +106,7 @@ export default function Invoices() {
 
   const handleCreateInvoice = async () => {
     try {
-      console.log('Creating invoice with data:', newInvoiceData)
-      console.log('Selected customer_id:', newInvoiceData.customer_id)
-
       const selectedCustomer = customerProfiles?.find(c => c.id === newInvoiceData.customer_id)
-      console.log('Selected customer profile:', selectedCustomer)
-
       await createInvoice.mutateAsync(newInvoiceData)
       toast.success('Fatura oluşturuldu', {
         description: 'Yeni fatura başarıyla oluşturuldu'

@@ -283,6 +283,57 @@ export default function CustomerDetails() {
         </CardContent>
       </Card>
 
+      {/* ID Card Images */}
+      {(customer.id_card_front_url || customer.id_card_back_url) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Kimlik Kartı</CardTitle>
+            <CardDescription>
+              Müşteri tarafından yüklenmiş kimlik belgesi
+              {customer.id_card_uploaded_at && (
+                <> · {formatDate(customer.id_card_uploaded_at)}</>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Ön Yüz</div>
+                {customer.id_card_front_url ? (
+                  <a href={customer.id_card_front_url} target="_blank" rel="noreferrer">
+                    <img
+                      src={customer.id_card_front_url}
+                      alt="Kimlik ön yüz"
+                      className="w-full max-h-64 object-contain rounded border bg-muted"
+                    />
+                  </a>
+                ) : (
+                  <div className="h-40 rounded border bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+                    Yüklenmedi
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Arka Yüz</div>
+                {customer.id_card_back_url ? (
+                  <a href={customer.id_card_back_url} target="_blank" rel="noreferrer">
+                    <img
+                      src={customer.id_card_back_url}
+                      alt="Kimlik arka yüz"
+                      className="w-full max-h-64 object-contain rounded border bg-muted"
+                    />
+                  </a>
+                ) : (
+                  <div className="h-40 rounded border bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+                    Yüklenmedi
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

@@ -23,6 +23,16 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
+    // Admin client bypasses RLS — needed because `invoices.customer_id` FKs
+    // to `customers.id`, not auth uid, so the "customers can view own
+    // invoices" RLS policy (auth.uid() = customer_id) doesn't match and
+    // the user-scoped client returns null. We use the admin client to fetch
+    // and then verify ownership via the customers table.
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
     // Get user from auth token
     const { data: { user } } = await supabaseClient.auth.getUser()
     if (!user) {
@@ -39,12 +49,11 @@ serve(async (req) => {
       throw new Error('invoice_id is required')
     }
 
-    // Get invoice details
-    const { data: invoice, error: invoiceError } = await supabaseClient
+    // Get invoice details (admin client bypasses RLS)
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .select(`
         *,
-        customer:profiles(id, full_name, email, phone),
         items:invoice_items(*)
       `)
       .eq('id', invoice_id)
@@ -54,30 +63,45 @@ serve(async (req) => {
       throw new Error('Invoice not found')
     }
 
-    // Get user profile
-    const { data: profile } = await supabaseClient
+    // Verify ownership: invoice.customer_id references customers.id; link
+    // through customers.profile_id (or email) to ensure this auth user
+    // actually owns the invoice before we initialise a payment for it.
+    const { data: invoiceCustomer } = await supabaseAdmin
+      .from('customers')
+      .select('id, profile_id, email')
+      .eq('id', invoice.customer_id)
+      .maybeSingle()
+
+    const ownsViaProfile = invoiceCustomer?.profile_id === user.id
+    const ownsViaEmail = invoiceCustomer?.email && invoiceCustomer.email === user.email
+    if (!invoiceCustomer || (!ownsViaProfile && !ownsViaEmail)) {
+      throw new Error('Bu fatura size ait değil')
+    }
+
+    // Get user profile (admin client for RLS bypass)
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     // Get default billing address
-    const { data: billingAddress } = await supabaseClient
+    const { data: billingAddress } = await supabaseAdmin
       .from('customer_addresses')
       .select('*')
       .eq('customer_id', user.id)
       .eq('type', 'billing')
       .eq('is_default', true)
-      .single()
+      .maybeSingle()
 
     // Get default shipping address (fallback to billing if not exists)
-    const { data: shippingAddress } = await supabaseClient
+    const { data: shippingAddress } = await supabaseAdmin
       .from('customer_addresses')
       .select('*')
       .eq('customer_id', user.id)
       .eq('type', 'shipping')
       .eq('is_default', true)
-      .single()
+      .maybeSingle()
 
     // iyzico configuration
     const IYZICO_API_KEY = Deno.env.get('IYZICO_API_KEY')
@@ -100,9 +124,23 @@ serve(async (req) => {
       price: item.amount.toFixed(2),
     }))
 
+    // Wallet top-ups must be single-payment only: taksitli olarak cüzdana
+    // para yüklemek mantıksız (komisyon + iade riski). Sunucu tarafında
+    // zorla kapatıyoruz, client bayrağıyla açılamaz.
+    const isWalletTopUp = invoice.items.some((i: any) => i.type === 'wallet_topup')
+    const enabledInstallments = isWalletTopUp ? [1] : [1, 2, 3, 6, 9]
+
     // Calculate price (iyzico requires string with 2 decimals)
     const price = invoice.total.toFixed(2)
     const paidPrice = invoice.total.toFixed(2) // Including fees
+
+    // Safe fallbacks so missing profile/address rows never crash the buyer block
+    const safeProfile = {
+      id: profile?.id || user.id,
+      email: profile?.email || user.email || 'noreply@example.com',
+      full_name: profile?.full_name || invoiceCustomer?.email || 'Müşteri',
+      phone: (profile as any)?.phone || '',
+    }
 
     // Build request payload
     const requestPayload = {
@@ -110,17 +148,17 @@ serve(async (req) => {
       conversationId,
       price,
       paidPrice,
-      currency: invoice.currency || 'USD',
+      currency: invoice.currency || 'TRY',
       basketId: invoice.invoice_number,
       paymentGroup: 'PRODUCT',
       callbackUrl: return_url || `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-iyzico-callback`,
-      enabledInstallments: [1, 2, 3, 6, 9],
+      enabledInstallments,
       buyer: {
-        id: profile.id,
-        name: (billingAddress?.contact_name || profile.full_name)?.split(' ')[0] || 'Ad',
-        surname: (billingAddress?.contact_name || profile.full_name)?.split(' ').slice(1).join(' ') || 'Soyad',
-        gsmNumber: billingAddress?.phone || profile.phone || '+905350000000',
-        email: profile.email,
+        id: safeProfile.id,
+        name: (billingAddress?.contact_name || safeProfile.full_name)?.split(' ')[0] || 'Ad',
+        surname: (billingAddress?.contact_name || safeProfile.full_name)?.split(' ').slice(1).join(' ') || 'Soyad',
+        gsmNumber: billingAddress?.phone || safeProfile.phone || '+905350000000',
+        email: safeProfile.email,
         identityNumber: billingAddress?.identity_number || '11111111111', // TR kimlik no
         registrationAddress: billingAddress?.address_line1 || 'Adres bilgisi yok',
         ip: req.headers.get('x-forwarded-for') || '85.34.78.112',
@@ -129,14 +167,14 @@ serve(async (req) => {
         zipCode: billingAddress?.postal_code || '34732',
       },
       shippingAddress: {
-        contactName: shippingAddress?.contact_name || billingAddress?.contact_name || profile.full_name || 'Müşteri',
+        contactName: shippingAddress?.contact_name || billingAddress?.contact_name || safeProfile.full_name || 'Müşteri',
         city: shippingAddress?.city || billingAddress?.city || 'Istanbul',
         country: shippingAddress?.country || billingAddress?.country || 'Turkey',
         address: shippingAddress?.address_line1 || billingAddress?.address_line1 || 'Adres bilgisi yok',
         zipCode: shippingAddress?.postal_code || billingAddress?.postal_code || '34732',
       },
       billingAddress: {
-        contactName: billingAddress?.contact_name || profile.full_name || 'Müşteri',
+        contactName: billingAddress?.contact_name || safeProfile.full_name || 'Müşteri',
         city: billingAddress?.city || 'Istanbul',
         country: billingAddress?.country || 'Turkey',
         address: billingAddress?.address_line1 || 'Adres bilgisi yok',
@@ -147,33 +185,36 @@ serve(async (req) => {
 
     console.log('🔐 Initializing iyzico payment:', conversationId)
 
-    // Create authorization header
-    const randomString = crypto.randomUUID()
-    const authString = `apiKey:${IYZICO_API_KEY}&randomKey:${randomString}&signature:`
-
-    // Create HMAC signature
+    // --- iyzico v2 auth signature ---
+    // Spec:
+    //   signature = HMAC-SHA256(secret, randomKey + uri + requestBody).hex()
+    //   authString = `apiKey:<key>&randomKey:<rnd>&signature:<hex>`
+    //   header     = `IYZWSv2 ` + base64(authString)
+    const iyzicoUri = '/payment/iyzipos/checkoutform/initialize/auth/ecom'
+    const randomString = crypto.randomUUID().replace(/-/g, '')
     const requestString = JSON.stringify(requestPayload)
-    const dataToSign = randomString + requestString
+    const dataToSign = randomString + iyzicoUri + requestString
 
     const encoder = new TextEncoder()
-    const keyData = encoder.encode(IYZICO_SECRET_KEY)
-    const msgData = encoder.encode(dataToSign)
-
     const key = await crypto.subtle.importKey(
       'raw',
-      keyData,
+      encoder.encode(IYZICO_SECRET_KEY),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
     )
+    const signatureBytes = new Uint8Array(
+      await crypto.subtle.sign('HMAC', key, encoder.encode(dataToSign))
+    )
+    const signatureHex = Array.from(signatureBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
 
-    const signature = await crypto.subtle.sign('HMAC', key, msgData)
-    const signatureBase64 = base64Encode(new Uint8Array(signature))
-
-    const authorization = `${authString}${signatureBase64}`
+    const authString = `apiKey:${IYZICO_API_KEY}&randomKey:${randomString}&signature:${signatureHex}`
+    const authorization = `IYZWSv2 ${base64Encode(encoder.encode(authString))}`
 
     // Call iyzico API
-    const response = await fetch(`${IYZICO_BASE_URL}/payment/iyzipos/checkoutform/initialize/auth/ecom`, {
+    const response = await fetch(`${IYZICO_BASE_URL}${iyzicoUri}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -186,14 +227,19 @@ serve(async (req) => {
 
     const result = await response.json()
 
-    console.log('📥 iyzico Response:', result.status)
+    console.log('📥 iyzico Response:', JSON.stringify(result))
 
     if (result.status !== 'success') {
-      throw new Error(result.errorMessage || 'iyzico payment initialization failed')
+      // Surface every bit of context iyzico gave us so we can debug auth /
+      // signature / param issues from the client-side toast.
+      const detail = [result.errorCode, result.errorMessage, result.errorGroup]
+        .filter(Boolean)
+        .join(' | ')
+      throw new Error(`iyzico: ${detail || 'payment initialization failed'}`)
     }
 
-    // Save payment record
-    await supabaseClient
+    // Save payment record (admin client to avoid RLS gotchas)
+    await supabaseAdmin
       .from('payments')
       .insert({
         customer_id: user.id,

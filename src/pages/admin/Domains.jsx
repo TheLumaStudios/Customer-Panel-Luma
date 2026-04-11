@@ -13,8 +13,7 @@ import { supabase } from '@/lib/supabase'
 import DomainForm from '@/components/domains/DomainForm'
 
 export default function Domains() {
-  console.log('Domains component rendering...')
-  const { data: domains, isLoading, error } = useDomains()
+const { data: domains, isLoading, error } = useDomains()
   const { data: customers } = useCustomers()
   const createDomain = useCreateDomain()
   const updateDomain = useUpdateDomain()
@@ -82,9 +81,6 @@ export default function Domains() {
       setCfLoading(null)
     }
   }
-
-  console.log('Domains page - isLoading:', isLoading, 'error:', error, 'data:', domains)
-  console.log('Domains page - domains count:', domains?.length)
 
   const handleCreate = () => {
     setEditingDomain(null)

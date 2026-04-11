@@ -131,7 +131,6 @@ export const getInvoice = async (id) => {
  */
 export const createInvoice = async (invoiceData) => {
   try {
-    console.log('📤 Sending invoice creation request:', invoiceData)
     const { data: { session } } = await supabase.auth.getSession()
 
     const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-create`, {
@@ -143,8 +142,6 @@ export const createInvoice = async (invoiceData) => {
       body: JSON.stringify(invoiceData),
     })
 
-    console.log('📥 Response status:', response.status, response.statusText)
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Network error' }))
       console.error('❌ Error response:', errorData)
@@ -152,8 +149,6 @@ export const createInvoice = async (invoiceData) => {
     }
 
     const result = await response.json()
-    console.log('✅ Invoice created successfully:', result)
-
     if (!result.success) {
       throw new Error(result.error || 'Failed to create invoice')
     }
@@ -498,25 +493,127 @@ export const deleteInvoice = async (id) => {
 }
 
 /**
+* Create a self-service invoice (customer-scoped).
+* The server forces customer_id = auth user, currency = TRY, re-prices
+* hosting/vds items from product_packages, and applies tax server-side.
+*
+* @param {Object} payload
+* @param {Array}  payload.items       - [{ type, package_id?, billing_period?, quantity?, unit_price?, description? }]
+* @param {Object} payload.notes_json  - Optional { contacts, nameservers, domains } (domain flow only)
+*/
+export const createSelfInvoice = async (payload) => {
+  try {
+// Proactively refresh — avoids stale/expired access tokens hitting the
+// Supabase gateway and returning {"code":401,"message":"Invalid JWT"}.
+    let { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      const { data: refreshed } = await supabase.auth.refreshSession()
+      session = refreshed?.session || null
+    }
+    if (!session?.access_token) {
+      throw new Error('Oturumunuz sona ermiş görünüyor. Lütfen çıkış yapıp tekrar giriş yapın.')
+    }
+
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-create-self`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': anonKey,
+      },
+      body: JSON.stringify(payload),
+    })
+
+// Gateway rejected JWT → try one silent refresh + retry before failing
+    if (response.status === 401) {
+      const bodyText = await response.clone().text().catch(() => '')
+      if (bodyText.includes('Invalid JWT') || bodyText.includes('JWT')) {
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        if (refreshed?.session?.access_token) {
+          const retry = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-create-self`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${refreshed.session.access_token}`,
+              'apikey': anonKey,
+            },
+            body: JSON.stringify(payload),
+          })
+          if (retry.ok) {
+            const result = await retry.json()
+            if (!result.success) throw new Error(result.error || 'Failed to create self invoice')
+            return result.invoice
+          }
+        }
+        throw new Error('Oturumunuz sona ermiş. Lütfen çıkış yapıp tekrar giriş yapın.')
+      }
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create self invoice')
+    }
+    return result.invoice
+  } catch (error) {
+    console.error('createSelfInvoice failed:', error)
+    throw error
+  }
+}
+
+/**
  * Initialize iyzico payment
  * @param {string} invoice_id - Invoice ID
  * @param {string} return_url - URL to return after payment
  */
 export const initializeIyzicoPayment = async (invoice_id, return_url = null) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/payment-iyzico-init`, {
+  const callInit = async (accessToken) => {
+    return fetch(`${SUPABASE_FUNCTIONS_URL}/payment-iyzico-init`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
+        'apikey': anonKey,
       },
       body: JSON.stringify({
         invoice_id,
         return_url: return_url || `${window.location.origin}/payment-callback`,
       }),
     })
+  }
+
+  try {
+    let { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      const { data: refreshed } = await supabase.auth.refreshSession()
+      session = refreshed?.session || null
+    }
+    if (!session?.access_token) {
+      throw new Error('Oturumunuz sona ermiş görünüyor. Lütfen çıkış yapıp tekrar giriş yapın.')
+    }
+
+    let response = await callInit(session.access_token)
+
+// Gateway rejected JWT → refresh once and retry
+    if (response.status === 401) {
+      const bodyText = await response.clone().text().catch(() => '')
+      if (bodyText.includes('JWT')) {
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        if (refreshed?.session?.access_token) {
+          response = await callInit(refreshed.session.access_token)
+        } else {
+          throw new Error('Oturumunuz sona ermiş. Lütfen çıkış yapıp tekrar giriş yapın.')
+        }
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Network error' }))

@@ -13,9 +13,6 @@ export default function InvoiceDetails({ open, onOpenChange, invoice }) {
 
   if (!invoice) return null
 
-  console.log('Invoice data:', invoice)
-  console.log('Invoice items:', invoice.invoice_items)
-
   const handleDownloadPDF = () => {
     const doc = new jsPDF()
 

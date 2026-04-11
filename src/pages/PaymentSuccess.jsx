@@ -1,9 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { supabase } from '@/lib/supabase'
+import { useCheckoutStore } from '@/stores/checkoutStore'
 
 export default function PaymentSuccess() {
   const navigate = useNavigate()
@@ -11,14 +13,68 @@ export default function PaymentSuccess() {
   const invoiceId = searchParams.get('invoice')
   const paymentId = searchParams.get('payment')
 
+  const [loading, setLoading] = useState(!!invoiceId)
+  const [itemTypes, setItemTypes] = useState([])
+  const [invoiceTotal, setInvoiceTotal] = useState(null)
+
   useEffect(() => {
-    // Konfeti efekti
     confetti({
       particleCount: 100,
       spread: 70,
-      origin: { y: 0.6 }
+      origin: { y: 0.6 },
     })
+// Clear any stale checkout state so the next landing-cart session starts
+// clean and a duplicate invoice is never created.
+    useCheckoutStore.getState().clearCheckout()
   }, [])
+
+  useEffect(() => {
+    if (!invoiceId) return
+    ;(async () => {
+      try {
+        const [{ data: inv }, { data: items }] = await Promise.all([
+          supabase.from('invoices').select('total, currency').eq('id', invoiceId).maybeSingle(),
+          supabase.from('invoice_items').select('type').eq('invoice_id', invoiceId),
+        ])
+        setInvoiceTotal(inv?.total ?? null)
+        setItemTypes((items || []).map(i => i.type))
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [invoiceId])
+
+  const renderMessage = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Detaylar yükleniyor...
+        </div>
+      )
+    }
+    if (itemTypes.includes('wallet_topup')) {
+      return (
+        <p className="text-sm">
+          ₺{invoiceTotal} cüzdanınıza eklendi. Yeni bakiyenizi <b>Cüzdanım</b> sayfasında görebilirsiniz.
+        </p>
+      )
+    }
+    if (itemTypes.includes('domain')) {
+      return (
+        <p className="text-sm">
+          Domain kayıt işleminiz sıraya alındı. Ekibimiz reseller panelinden kaydı 5-15 dakika içinde tamamlar.
+        </p>
+      )
+    }
+    if (itemTypes.some(t => t === 'hosting' || t === 'vds')) {
+      return (
+        <p className="text-sm">
+          Hizmetiniz 1 iş günü içinde aktif edilecek. Ekibimiz sizi bilgilendirecektir.
+        </p>
+      )
+    }
+    return <p className="text-sm">Ödemeniz başarıyla tamamlandı.</p>
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -34,14 +90,15 @@ export default function PaymentSuccess() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+            {renderMessage()}
             {invoiceId && (
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs pt-2 border-t mt-2">
                 <span className="text-muted-foreground">Fatura ID:</span>
                 <span className="font-medium">{invoiceId}</span>
               </div>
             )}
             {paymentId && (
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Ödeme ID:</span>
                 <span className="font-medium">{paymentId}</span>
               </div>
@@ -50,16 +107,13 @@ export default function PaymentSuccess() {
 
           <div className="flex flex-col gap-2">
             {invoiceId && (
-              <Button
-                onClick={() => navigate(`/admin/invoice/${invoiceId}`)}
-                className="w-full"
-              >
+              <Button onClick={() => navigate(`/invoice/${invoiceId}`)} className="w-full">
                 Faturayı Görüntüle
               </Button>
             )}
             <Button
               variant="outline"
-              onClick={() => navigate('/admin/invoices')}
+              onClick={() => navigate('/invoices')}
               className="w-full"
             >
               Faturalar Sayfasına Dön

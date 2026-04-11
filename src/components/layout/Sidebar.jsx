@@ -25,7 +25,8 @@ import {
   BookOpen,
   Megaphone,
   Wifi,
-  Key
+  Key,
+  Wallet as WalletIcon
 } from 'lucide-react'
 
 const adminMenuItems = [
@@ -69,6 +70,7 @@ const customerMenuItems = [
   { name: 'Hostingim', path: '/hosting', icon: Server },
   { name: 'VDS / VPS', path: '/my-vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
+  { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   { name: 'Bilgi Bankası', path: '/knowledge-base', icon: BookOpen },
   { name: 'Ağ Durumu', path: '/network-status', icon: Wifi },

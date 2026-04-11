@@ -5,8 +5,6 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
   const { user, profile, loading } = useAuth()
 
   // Debug logging
-  console.log('ProtectedRoute:', { user: !!user, profile, loading, requiredRole })
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -22,7 +20,6 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (!user) {
-    console.log('No user, redirecting to login')
     return <Navigate to="/login" replace />
   }
 
@@ -33,7 +30,6 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (requiredRole && profile?.role && profile.role !== requiredRole) {
-    console.log('Wrong role, redirecting:', profile.role, 'required:', requiredRole)
     let redirectPath = '/dashboard'
     if (profile.role === 'admin') {
       redirectPath = '/admin/dashboard'
@@ -43,6 +39,5 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to={redirectPath} replace />
   }
 
-  console.log('Access granted, rendering children')
   return children
 }

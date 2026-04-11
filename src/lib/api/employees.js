@@ -160,9 +160,7 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
     const password = Math.random().toString(36).slice(-8) +
                      Math.random().toString(36).slice(-8).toUpperCase() + '123!'
 
-    console.log('🔐 Creating employee auth account...')
-
-    // Create admin client with service role key
+// Create admin client with service role key
     const { createClient } = await import('@supabase/supabase-js')
     const supabaseAdmin = createClient(
       import.meta.env.VITE_SUPABASE_URL,
@@ -170,7 +168,6 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
     )
 
     // Create auth user
-    console.log('👤 Creating auth user...')
     const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: employee.email,
       password,
@@ -186,10 +183,7 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
       throw new Error(`Failed to create auth user: ${createError.message}`)
     }
 
-    console.log('✅ Auth user created:', authUser.user.id)
-
     // Create profile
-    console.log('📄 Creating profile...')
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -206,10 +200,7 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
       throw new Error(`Failed to create profile: ${profileError.message}`)
     }
 
-    console.log('✅ Profile created')
-
     // Update employee with profile_id
-    console.log('🔗 Linking employee to profile...')
     const { error: updateError } = await supabase
       .from('employees')
       .update({ profile_id: authUser.user.id })
@@ -219,8 +210,6 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
       console.error('Employee link error:', updateError)
       throw new Error(`Failed to link employee: ${updateError.message}`)
     }
-
-    console.log('✅ Employee auth created successfully!')
 
     return {
       success: true,

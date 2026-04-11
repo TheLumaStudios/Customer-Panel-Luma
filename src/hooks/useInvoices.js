@@ -32,6 +32,21 @@ export function useCreateInvoice() {
 }
 
 /**
+* Self-service invoice creation (customer-scoped).
+* Used by Checkout, DomainCheckout, and Wallet top-up.
+*/
+export function useCreateSelfInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: invoicesApi.createSelfInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+/**
  * Pay invoice mutation
  */
 export function usePayInvoice() {

@@ -1,9 +1,7 @@
 import supabaseApi from '@/lib/axios'
 
 export const getDomains = async () => {
-  console.log('getDomains API called with axios')
-
-  try {
+try {
     // Fetch domains only (without nested data to avoid ambiguity)
     const response = await supabaseApi.get('/domains', {
       params: {
@@ -12,7 +10,6 @@ export const getDomains = async () => {
       }
     })
 
-    console.log('getDomains success:', response.data)
     return response.data || []
   } catch (error) {
     console.error('getDomains failed:', error)

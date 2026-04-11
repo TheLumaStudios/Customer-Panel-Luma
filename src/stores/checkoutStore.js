@@ -23,12 +23,18 @@ export const useCheckoutStore = create(
       // Billing period
       billingPeriod: 'monthly', // monthly, quarterly, semi_annual, annual
 
+// Outstanding unpaid invoice ID (for retry/reuse across the iyzico
+// payment dialog). Cleared whenever cart contents change or on
+// successful payment.
+      currentInvoiceId: null,
+
       // Actions
       setStep: (step) => set({ step }),
 
       addItem: (item) => set((state) => {
         if (state.items.find(i => i.id === item.id)) return state
-        return { items: [...state.items, item] }
+// Any cart change invalidates a cached draft invoice
+        return { items: [...state.items, item], currentInvoiceId: null }
       }),
 
       removeItem: (id) => set((state) => ({
@@ -36,6 +42,7 @@ export const useCheckoutStore = create(
         configurations: Object.fromEntries(
           Object.entries(state.configurations).filter(([k]) => k !== id)
         ),
+        currentInvoiceId: null,
       })),
 
       updateItemConfig: (id, config) => set((state) => ({
@@ -44,7 +51,9 @@ export const useCheckoutStore = create(
 
       setPromoCode: (code, discount = 0) => set({ promoCode: code, promoDiscount: discount }),
 
-      setBillingPeriod: (period) => set({ billingPeriod: period }),
+      setBillingPeriod: (period) => set({ billingPeriod: period, currentInvoiceId: null }),
+
+      setCurrentInvoiceId: (id) => set({ currentInvoiceId: id }),
 
       setCustomerInfo: (info) => set({ customerInfo: info }),
 
@@ -73,6 +82,7 @@ export const useCheckoutStore = create(
         promoCode: '',
         promoDiscount: 0,
         billingPeriod: 'monthly',
+        currentInvoiceId: null,
       }),
     }),
     {
@@ -83,6 +93,7 @@ export const useCheckoutStore = create(
         billingPeriod: state.billingPeriod,
         promoCode: state.promoCode,
         step: state.step,
+        currentInvoiceId: state.currentInvoiceId,
       }),
     }
   )

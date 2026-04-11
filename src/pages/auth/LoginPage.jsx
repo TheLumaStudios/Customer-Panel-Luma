@@ -63,7 +63,6 @@ export default function LoginPage() {
       setLoading(false)
     } else {
       // Login başarılı, yönlendir
-      console.log('Login successful, redirecting...')
       // Auth state change otomatik yönlendirecek, ama yine de navigate edelim
       setTimeout(() => {
         window.location.href = '/admin/dashboard'

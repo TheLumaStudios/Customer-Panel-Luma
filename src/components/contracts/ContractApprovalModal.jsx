@@ -34,7 +34,6 @@ export default function ContractApprovalModal({ contract, open, onOpenChange }) 
       })
 
       // Non-repudiation bilgisini göster
-      console.log('📝 Non-repudiation info:', data.non_repudiation_info)
     },
     onError: (error) => {
       toast.error('Onaylama hatası', {

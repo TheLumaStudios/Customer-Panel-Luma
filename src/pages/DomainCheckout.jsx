@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart, CreditCard, Globe, User, Mail, Phone, MapPin, Building, Loader2, ArrowLeft, Check } from 'lucide-react'
-import { useDomainRegister } from '@/hooks/useDomainSearch'
+import { useCreateSelfInvoice, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
+import IyzicoPaymentDialog from '@/components/payments/IyzicoPaymentDialog'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +34,13 @@ export default function DomainCheckout() {
     'ns2.thelumastudios.com'
   ])
 
-  const domainRegister = useDomainRegister()
+  const createSelfInvoice = useCreateSelfInvoice()
+  const initializeIyzico = useInitializeIyzicoPayment()
+  const isPaying = createSelfInvoice.isPending || initializeIyzico.isPending
+
+  const [iyzicoOpen, setIyzicoOpen] = useState(false)
+  const [iyzicoContent, setIyzicoContent] = useState('')
+  const [iyzicoUrl, setIyzicoUrl] = useState('')
 
   const totalPrice = cart.reduce((sum, item) => sum + item.price, 0)
 
@@ -81,31 +88,46 @@ export default function DomainCheckout() {
     }
 
     try {
-      // Prepare domains array for API
-      const domains = cart.map(item => ({
-        sld: item.sld,
-        tld: item.tld,
-        period: item.period || 1,
-        contacts: contacts,
-        nameservers: nameservers
+// Resolve TRY unit price per domain (psychological TRY price if available,
+// otherwise a simple USD→TRY assumption handled server-side would be
+// preferable; for now trust what the landing page displayed).
+      const items = cart.map(item => ({
+        type: 'domain',
+        description: `${item.domain} — ${item.period || 1} yıl`,
+        quantity: 1,
+        unit_price: Number(
+          (currency === 'TRY' && item.tryPrice)
+            ? toPsychologicalPrice(item.tryPrice)
+// Fallback: approximate USD→TRY at 1:34 so the invoice is in TRY.
+// The reseller is paid separately at registration time.
+            : (item.price * 34)
+        ).toFixed(2),
       }))
 
-      const result = await domainRegister.mutateAsync({
-        domains,
-        currency: 'USD',
-        payment_method: 'Wallet',
+// Create self-service invoice. `notes_json` carries the contact + NS
+// snapshot that payment-iyzico-callback will use to trigger reseller
+// registration AFTER the payment clears.
+      const invoice = await createSelfInvoice.mutateAsync({
+        items,
+        notes_json: {
+          contacts,
+          nameservers,
+          domains: cart.map(item => ({
+            sld: item.sld,
+            tld: item.tld,
+            period: item.period || 1,
+          })),
+        },
       })
 
-      if (result.redirect) {
-        // Redirect to payment gateway
-        window.location.href = result.redirect_url
-      } else {
-        // Success - order placed
-        toast.success('Domain siparişi oluşturuldu!', {
-          description: `Sipariş No: ${result.order_id}`
-        })
-        navigate('/admin/domains')
-      }
+      const result = await initializeIyzico.mutateAsync({
+        invoice_id: invoice.id,
+        return_url: `${window.location.origin}/payment-success`,
+      })
+
+      setIyzicoContent(result.checkoutFormContent || '')
+      setIyzicoUrl(result.paymentPageUrl || '')
+      setIyzicoOpen(true)
     } catch (error) {
       toast.error('Sipariş oluşturulamadı', {
         description: error.message
@@ -357,10 +379,10 @@ export default function DomainCheckout() {
                 <Button
                   size="lg"
                   onClick={handleCheckout}
-                  disabled={domainRegister.isPending}
+                  disabled={isPaying}
                   className="min-w-[200px]"
                 >
-                  {domainRegister.isPending ? (
+                  {isPaying ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                       İşleniyor...
@@ -377,6 +399,13 @@ export default function DomainCheckout() {
           </Card>
         </div>
       </div>
+
+      <IyzicoPaymentDialog
+        open={iyzicoOpen}
+        onOpenChange={setIyzicoOpen}
+        paymentPageUrl={iyzicoUrl}
+        htmlContent={iyzicoContent}
+      />
     </div>
   )
 }

@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useInvoice, usePayInvoice, useCustomerCredit, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
+import { useCustomers } from '@/hooks/useCustomers'
+import { useCreateTicket } from '@/hooks/useTickets'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +31,8 @@ import {
   DollarSign,
   CheckCircle2,
   Wallet,
+  XCircle,
+  Loader2,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -41,11 +47,38 @@ export default function InvoiceDetail() {
   const [iyzicoModalOpen, setIyzicoModalOpen] = useState(false)
   const [iyzicoContent, setIyzicoContent] = useState('')
   const [bankTransferOpen, setBankTransferOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [existingCancelTicket, setExistingCancelTicket] = useState(null)
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: credit } = useCustomerCredit(user?.id)
+  const { data: customers } = useCustomers()
   const payInvoice = usePayInvoice()
   const initializeIyzico = useInitializeIyzicoPayment()
+  const createTicket = useCreateTicket()
+
+  const currentCustomer = customers?.find(c => c.email === user?.email)
+
+// Look for an existing cancel request for this invoice so we don't let
+// the customer spam the support team with duplicates.
+  useEffect(() => {
+    if (!currentCustomer?.id || !invoice?.invoice_number) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('support_tickets')
+        .select('id, ticket_number, status, created_at')
+        .eq('customer_id', currentCustomer.id)
+        .like('subject', `%${invoice.invoice_number}%`)
+        .in('status', ['open', 'in_progress', 'waiting_customer'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (cancelled) return
+      setExistingCancelTicket(data?.[0] || null)
+    })()
+    return () => { cancelled = true }
+  }, [currentCustomer?.id, invoice?.invoice_number])
 
   const handlePayInvoice = async (paymentMethod) => {
     try {
@@ -63,6 +96,56 @@ export default function InvoiceDetail() {
       toast.error('Ödeme başarısız', {
         description: error.message,
       })
+    }
+  }
+
+  const handleCancelRequest = async () => {
+    if (!currentCustomer?.id) {
+      toast.error('Müşteri bilgisi bulunamadı', { description: 'Lütfen sayfayı yenileyin' })
+      return
+    }
+    if (!cancelReason.trim() || cancelReason.trim().length < 10) {
+      toast.error('Lütfen en az 10 karakterlik bir sebep yazın')
+      return
+    }
+
+    try {
+      const ticketNumber = `TK-${Date.now().toString(36).toUpperCase()}`
+      const created = await createTicket.mutateAsync({
+        ticket_number: ticketNumber,
+        customer_id: currentCustomer.id,
+        subject: `Fatura İptal Talebi - ${invoice.invoice_number}`,
+        description: `Müşteri, aşağıdaki fatura için iptal talebinde bulundu. Lütfen inceleyip onaylayın.
+
+        Fatura Bilgileri:
+        - Fatura No: ${invoice.invoice_number}
+        - Fatura ID: ${invoice.id}
+        - Tutar: ${(invoice.total || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${invoice.currency || 'TRY'}
+        - Oluşturulma: ${new Date(invoice.created_at).toLocaleString('tr-TR')}
+        - Durum: ${invoice.status}
+
+        İptal Sebebi:
+        ${cancelReason.trim()}
+
+        ---
+        Bu bildirim müşteri panelinden otomatik oluşturulmuştur.`,
+        category: 'billing',
+        priority: 'medium',
+        status: 'open',
+      })
+
+      toast.success('İptal talebiniz alındı', {
+        description: 'Ekibimiz en kısa sürede dönüş yapacak'
+      })
+      setExistingCancelTicket({
+        id: created?.id || ticketNumber,
+        ticket_number: ticketNumber,
+        status: 'open',
+      })
+      setCancelDialogOpen(false)
+      setCancelReason('')
+    } catch (err) {
+      toast.error('Talep gönderilemedi', { description: err.message })
     }
   }
 
@@ -166,6 +249,26 @@ export default function InvoiceDetail() {
                 <DollarSign className="h-4 w-4 mr-2" />
                 Havale/EFT ile Öde
               </Button>
+              {existingCancelTicket ? (
+                <Button
+                  variant="outline"
+                  disabled
+                  title={`Bu fatura için açık destek talebi var (${existingCancelTicket.ticket_number || existingCancelTicket.id.slice(0, 8)})`}
+                  className="text-muted-foreground"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  İptal Talebi Gönderildi
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  İptal Talebi
+                </Button>
+              )}
             </>
           )}
           <Button variant="outline">
@@ -479,6 +582,83 @@ export default function InvoiceDetail() {
               })
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Request Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              Fatura İptal Talebi
+            </DialogTitle>
+            <DialogDescription>
+              {invoice.invoice_number} numaralı faturanızı iptal ettirmek için
+              sebebini yazın. Talebiniz destek ekibine bildirim olarak iletilir
+              ve incelendikten sonra geri dönüş yapılır.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="p-3 rounded-lg bg-muted/50 text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fatura No:</span>
+                <span className="font-medium">{invoice.invoice_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tutar:</span>
+                <span className="font-medium">
+                  {formatCurrency(total, invoice.currency)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                İptal Sebebi <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Örn. Hizmeti yanlışlıkla satın aldım / Başka bir pakete geçmek istiyorum..."
+                rows={5}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                En az 10 karakter ({cancelReason.trim().length}/10)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={createTicket.isPending}
+              className="w-full sm:w-auto"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelRequest}
+              disabled={createTicket.isPending || cancelReason.trim().length < 10}
+              className="w-full sm:w-auto"
+            >
+              {createTicket.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Gönderiliyor...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  İptal Talebini Gönder
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

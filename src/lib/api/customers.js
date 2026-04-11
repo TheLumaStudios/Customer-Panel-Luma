@@ -100,7 +100,44 @@ export const updateCustomer = async (id, customerData) => {
     const response = await supabaseApi.patch('/customers', customerData, {
       params: { id: `eq.${id}` }
     })
-    return response.data?.[0] || response.data
+    const updated = response.data?.[0] || response.data
+
+    // Keep the linked profile row in sync so the dashboard welcome banner
+    // (and anything else that reads from `profiles`) shows fresh data
+    // immediately after an admin edit.
+    try {
+      // We may not have profile_id in the PATCH payload; fetch the customer
+      // row to discover which profile (if any) is linked.
+      const customerRow =
+        Array.isArray(updated) ? updated[0] : updated ||
+        (await supabaseApi.get('/customers', {
+          params: { id: `eq.${id}`, select: 'profile_id' }
+        })).data?.[0]
+
+      const profileId = customerRow?.profile_id
+      if (profileId) {
+        const profilePatch = {}
+        if (Object.prototype.hasOwnProperty.call(customerData, 'full_name'))
+          profilePatch.full_name = customerData.full_name
+        if (Object.prototype.hasOwnProperty.call(customerData, 'phone'))
+          profilePatch.phone = customerData.phone
+        if (Object.prototype.hasOwnProperty.call(customerData, 'company_name'))
+          profilePatch.company_name = customerData.company_name
+        if (Object.prototype.hasOwnProperty.call(customerData, 'email'))
+          profilePatch.email = customerData.email
+
+        if (Object.keys(profilePatch).length > 0) {
+          await supabaseApi.patch('/profiles', profilePatch, {
+            params: { id: `eq.${profileId}` }
+          })
+        }
+      }
+    } catch (syncError) {
+      // Non-fatal: customer row is authoritative for business data.
+      console.warn('Profile sync after updateCustomer failed:', syncError)
+    }
+
+    return updated
   } catch (error) {
     console.error('updateCustomer failed:', error)
     throw error

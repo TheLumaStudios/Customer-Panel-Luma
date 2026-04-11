@@ -1,0 +1,29 @@
+project_id = "pbgajlkaulxrspyptzzs"
+
+# Edge functions config.
+# invoice-create-self performs its own auth verification (reads the Bearer
+# token via supabase client and calls auth.getUser). The Supabase gateway's
+# JWT verifier is disabled here so the function's internal auth path is the
+# single source of truth and CLI-deployed flag drift can't silently re-enable
+# gateway verification.
+[functions.invoice-create-self]
+verify_jwt = false
+
+# payment-iyzico-init and payment-iyzico-callback do their own auth handling.
+# The gateway JWT verifier was rejecting otherwise-valid session tokens (e.g.
+# after browser restart), so we disable gateway verification and rely on the
+# function's internal `supabaseClient.auth.getUser()` check.
+[functions.payment-iyzico-init]
+verify_jwt = false
+
+[functions.payment-iyzico-callback]
+verify_jwt = false
+
+# AI ticket responder — auth handled inside the function (admin/employee only)
+[functions.ai-ticket-responder]
+verify_jwt = false
+
+# cpanel-sso — auth handled inside the function (reads Bearer token and
+# calls auth.getUser). Gateway verifier rejects otherwise-valid session tokens.
+[functions.cpanel-sso]
+verify_jwt = false

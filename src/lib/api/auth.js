@@ -46,29 +46,20 @@ export const prepareCustomerAuth = async (customer) => {
         }
       })
 
-      console.log('Existing customer_auth records:', existing)
-
       if (existing && existing.length > 0) {
         // Use existing password
         password = existing[0].password
         isExisting = true
-        console.log('Using existing password from database')
       } else {
         // Generate new random password
         password = generatePassword(12)
 
         // Create new
-        console.log('Creating new customer_auth record...', {
-          customer_id: customer.id,
-          email: customer.email,
-          password: password.substring(0, 3) + '***' // Only log first 3 chars
-        })
         const response = await supabaseApi.post('/customer_auth', {
           customer_id: customer.id,
           email: customer.email,
           password: password,
         })
-        console.log('Create response:', response.data)
       }
     } catch (dbError) {
       console.error('Database error details:', dbError)
@@ -84,18 +75,18 @@ export const prepareCustomerAuth = async (customer) => {
 
 Panel giriş bilgileriniz:
 
-Web: ${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}
-E-posta: ${customer.email}
-Şifre: ${password}
+      Web: ${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}
+      E-posta: ${customer.email}
+      Şifre: ${password}
 
 Şifrenizi unutmayın!`
       : `Merhaba ${customer.full_name},
 
 Müşteri paneliniz hazır!
 
-Web: ${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}
-E-posta: ${customer.email}
-Şifre: ${password}
+      Web: ${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}
+      E-posta: ${customer.email}
+      Şifre: ${password}
 
 İlk girişte şifrenizi değiştirmenizi öneririz.`
 

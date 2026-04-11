@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTickets, useCreateTicket, useUpdateTicket, useDeleteTicket } from '@/hooks/useTickets'
 import { useCustomers } from '@/hooks/useCustomers'
 import { supabase } from '@/lib/supabase'
@@ -8,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Eye, MessageSquare } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import TicketForm from '@/components/tickets/TicketForm'
 
 export default function Tickets() {
+  const navigate = useNavigate()
   const { data: tickets, isLoading, error } = useTickets()
   const { data: customers } = useCustomers()
   const createTicket = useCreateTicket()
@@ -24,6 +26,41 @@ export default function Tickets() {
   const [editingTicket, setEditingTicket] = useState(null)
   const [departments, setDepartments] = useState([])
   const [filterDepartmentId, setFilterDepartmentId] = useState('all')
+  const [aiRunningId, setAiRunningId] = useState(null)
+
+  const handleAiRespond = async (ticketId) => {
+    setAiRunningId(ticketId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+      const functionsUrl = baseUrl.includes('/rest/v1')
+        ? baseUrl.replace('/rest/v1', '/functions/v1')
+        : `${baseUrl}/functions/v1`
+
+      const response = await fetch(`${functionsUrl}/ai-ticket-responder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({ ticket_id: ticketId }),
+      })
+      const result = await response.json()
+      if (!result.success) throw new Error(result.error || 'AI çalıştırılamadı')
+
+      const actionCount = (result.actions || []).length
+      toast.success('AI cevapladı', {
+        description: `${actionCount} eylem gerçekleştirildi. Ticket güncellendi.`,
+      })
+// Refetch tickets to show updated status/replies
+      window.location.reload()
+    } catch (error) {
+      toast.error('AI çalıştırılamadı', { description: error.message })
+    } finally {
+      setAiRunningId(null)
+    }
+  }
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -227,8 +264,17 @@ export default function Tickets() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTickets?.map((ticket) => (
-                  <TableRow key={ticket.id}>
+                {filteredTickets?.map((ticket) => {
+// `getTickets` only selects `*`, so there is no joined
+// customer object. Resolve the customer client-side from
+// the separately-loaded `customers` list.
+                  const ticketCustomer = customers?.find(c => c.id === ticket.customer_id)
+                  return (
+                  <TableRow
+                    key={ticket.id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => navigate(`/admin/tickets/${ticket.id}`)}
+                  >
                     <TableCell className="font-medium">
                       #{ticket.ticket_number}
                     </TableCell>
@@ -240,10 +286,10 @@ export default function Tickets() {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {ticket.customer?.profile?.full_name || '-'}
+                          {ticketCustomer?.full_name || ticketCustomer?.email || '-'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {ticket.customer?.customer_code}
+                          {ticketCustomer?.customer_code}
                         </div>
                       </div>
                     </TableCell>
@@ -260,8 +306,28 @@ export default function Tickets() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAiRespond(ticket.id)}
+                          disabled={aiRunningId === ticket.id || ['resolved', 'closed'].includes(ticket.status)}
+                          title="AI ile cevapla"
+                          className="text-primary hover:text-primary"
+                        >
+                          {aiRunningId === ticket.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          <span className="ml-1 hidden sm:inline">AI</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate(`/admin/tickets/${ticket.id}`)}
+                          title="Detayı aç"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -281,7 +347,8 @@ export default function Tickets() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

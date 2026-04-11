@@ -31,7 +31,6 @@ export default function DomainPage() {
   const handleSearch = (e) => {
     e.preventDefault()
     // Search logic will be implemented
-    console.log('Searching for:', searchQuery)
   }
 
   return (

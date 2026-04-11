@@ -2,12 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as domainsApi from '@/lib/api/domains'
 
 export function useDomains() {
-  console.log('useDomains hook called')
-  const result = useQuery({
+const result = useQuery({
     queryKey: ['domains'],
     queryFn: domainsApi.getDomains,
   })
-  console.log('useDomains result:', result)
   return result
 }
 

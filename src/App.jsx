@@ -36,9 +36,11 @@ import VDS from '@/pages/admin/VDS'
 import Servers from '@/pages/admin/Servers'
 import Invoices from '@/pages/admin/Invoices'
 import AdminInvoiceDetail from '@/pages/admin/InvoiceDetail'
+import AdminTicketDetail from '@/pages/admin/TicketDetail'
 import Tickets from '@/pages/admin/Tickets'
 import Settings from '@/pages/admin/Settings'
 import SystemSettings from '@/pages/admin/SystemSettings'
+import BankAccounts from '@/pages/admin/BankAccounts'
 import Contracts from '@/pages/admin/Contracts'
 import Analytics from '@/pages/admin/Analytics'
 import Employees from '@/pages/admin/Employees'
@@ -50,6 +52,9 @@ import MyInvoices from '@/pages/customer/MyInvoices'
 import InvoiceDetail from '@/pages/customer/InvoiceDetail'
 import MyTickets from '@/pages/customer/MyTickets'
 import Profile from '@/pages/customer/Profile'
+import Wallet from '@/pages/customer/Wallet'
+import BankInfo from '@/pages/customer/BankInfo'
+import TicketDetail from '@/pages/customer/TicketDetail'
 import PaymentSuccess from '@/pages/PaymentSuccess'
 import PaymentFailed from '@/pages/PaymentFailed'
 import DomainSearch from '@/pages/DomainSearch'
@@ -147,9 +152,11 @@ function App() {
             <Route path="invoice/:id" element={<AdminInvoiceDetail />} />
             <Route path="approvals" element={<Approvals />} />
             <Route path="tickets" element={<Tickets />} />
+            <Route path="tickets/:id" element={<AdminTicketDetail />} />
             <Route path="contracts" element={<Contracts />} />
             <Route path="settings" element={<Settings />} />
             <Route path="system-settings" element={<SystemSettings />} />
+            <Route path="bank-accounts" element={<BankAccounts />} />
             <Route path="email-templates" element={<EmailTemplates />} />
             <Route path="ticket-departments" element={<TicketDepartments />} />
             <Route path="knowledge-base" element={<KnowledgeBaseAdmin />} />
@@ -179,6 +186,7 @@ function App() {
             <Route path="hosting" element={<Hosting />} />
             <Route path="domains" element={<Domains />} />
             <Route path="tickets" element={<Tickets />} />
+            <Route path="tickets/:id" element={<AdminTicketDetail />} />
           </Route>
 
           {/* Customer routes - specific paths to avoid catching "/" */}
@@ -209,8 +217,17 @@ function App() {
           <Route path="/tickets" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<MyTickets />} />
           </Route>
+          <Route path="/tickets/:id" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<TicketDetail />} />
+          </Route>
           <Route path="/profile" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<Profile />} />
+          </Route>
+          <Route path="/wallet" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<Wallet />} />
+          </Route>
+          <Route path="/bank-info" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<BankInfo />} />
           </Route>
           <Route path="/knowledge-base" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<KnowledgeBase />} />

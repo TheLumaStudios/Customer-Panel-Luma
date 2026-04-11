@@ -138,8 +138,6 @@ export const testContractAuth = async () => {
       throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.')
     }
 
-    console.log('Testing with token:', session.access_token ? 'Token exists' : 'No token')
-
     const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/test-contract-auth`, {
       method: 'POST',
       headers: {
@@ -150,7 +148,6 @@ export const testContractAuth = async () => {
     })
 
     const responseData = await response.json()
-    console.log('Test result:', responseData)
     return responseData
   } catch (error) {
     console.error('testContractAuth failed:', error)
@@ -161,14 +158,10 @@ export const testContractAuth = async () => {
 // Sözleşme gönderme - Geçici olarak direkt database insert kullanıyoruz
 export const sendContract = async (contractData) => {
   try {
-    console.log('📤 Sending contract request:', contractData)
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.')
     }
-
-    console.log('✅ User found:', user.email)
 
     // Get template
     const { data: template, error: templateError } = await supabase
@@ -180,8 +173,6 @@ export const sendContract = async (contractData) => {
     if (templateError || !template) {
       throw new Error('Şablon bulunamadı')
     }
-
-    console.log('✅ Template found:', template.name)
 
     // Verify customer exists
     const { data: customer, error: customerError } = await supabase
@@ -195,9 +186,6 @@ export const sendContract = async (contractData) => {
       throw new Error('Müşteri bulunamadı')
     }
 
-    console.log('✅ Customer found:', customer.full_name, customer.email)
-    console.log('📝 Will insert contract with customer_id:', customer.id)
-
     // Calculate hash
     const encoder = new TextEncoder()
     const data = encoder.encode(template.content)
@@ -210,14 +198,6 @@ export const sendContract = async (contractData) => {
     expiresAt.setDate(expiresAt.getDate() + (contractData.expires_in_days || 30))
 
     // Insert contract
-    console.log('📤 Inserting contract with data:', {
-      customer_id: customer.id,
-      template_id: contractData.template_id,
-      status: 'pending',
-      is_mandatory: template.is_mandatory,
-      sent_by: user.id,
-    })
-
     const { data: customerContract, error: contractError } = await supabase
       .from('customer_contracts')
       .insert({
@@ -242,16 +222,7 @@ export const sendContract = async (contractData) => {
       throw new Error(contractError.message)
     }
 
-    console.log('✅ Contract inserted successfully!')
-    console.log('📋 Contract details:', {
-      id: customerContract.id,
-      customer_id: customerContract.customer_id,
-      status: customerContract.status,
-      template_id: customerContract.template_id,
-    })
-
     // Create history record
-    console.log('📜 Creating history record...')
     const { error: historyError } = await supabase
       .from('contract_history')
       .insert({
@@ -269,11 +240,9 @@ export const sendContract = async (contractData) => {
     if (historyError) {
       console.warn('⚠️ History record failed (non-critical):', historyError)
     } else {
-      console.log('✅ History record created')
-    }
+  }
 
-    console.log('🎉 Contract send complete! Customer should see modal now.')
-    return { success: true, contract: customerContract }
+  return { success: true, contract: customerContract }
   } catch (error) {
     console.error('❌ sendContract failed:', error)
     throw error
@@ -283,14 +252,10 @@ export const sendContract = async (contractData) => {
 // Sözleşme onaylama - Client-side implementation
 export const approveContract = async (approvalData) => {
   try {
-    console.log('📝 Approving contract:', approvalData)
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       throw new Error('Oturum bulunamadı')
     }
-
-    console.log('✅ User found:', user.email)
 
     // Get contract
     const { data: contract, error: contractError } = await supabase
@@ -303,8 +268,6 @@ export const approveContract = async (approvalData) => {
       console.error('❌ Contract not found:', contractError)
       throw new Error('Sözleşme bulunamadı')
     }
-
-    console.log('✅ Contract found:', contract.id, 'status:', contract.status)
 
     // Get customer to verify ownership
     const { data: customer } = await supabase
@@ -320,8 +283,6 @@ export const approveContract = async (approvalData) => {
     if (contract.status !== 'pending') {
       throw new Error('Sözleşme zaten işlenmiş')
     }
-
-    console.log('✅ Customer verified, creating approval...')
 
     // Calculate approval text hash
     const encoder = new TextEncoder()
@@ -357,8 +318,6 @@ export const approveContract = async (approvalData) => {
       throw new Error(approvalError.message)
     }
 
-    console.log('✅ Approval created:', approval.id)
-
     // Update contract status (trigger will handle this, but we do it explicitly too)
     const { error: updateError } = await supabase
       .from('customer_contracts')
@@ -368,8 +327,6 @@ export const approveContract = async (approvalData) => {
     if (updateError) {
       console.warn('⚠️ Contract status update warning:', updateError)
     }
-
-    console.log('🎉 Contract approved successfully!')
 
     return {
       success: true,
@@ -394,8 +351,6 @@ export const getPendingContracts = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
-    console.log('📋 Checking pending contracts for user:', user.email, user.id)
-
     // First, find customer by email
     const { data: customer, error: customerError } = await supabase
       .from('customers')
@@ -404,11 +359,8 @@ export const getPendingContracts = async () => {
       .single()
 
     if (customerError || !customer) {
-      console.log('❌ Customer not found for email:', user.email)
       return []
     }
-
-    console.log('✅ Customer found with ID:', customer.id)
 
     // Then get contracts for this customer
     const { data, error } = await supabase
@@ -426,7 +378,6 @@ export const getPendingContracts = async () => {
       throw error
     }
 
-    console.log('✅ Found pending contracts:', data?.length || 0)
     return data || []
   } catch (error) {
     console.error('getPendingContracts failed:', error)

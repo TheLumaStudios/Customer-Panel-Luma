@@ -8,6 +8,7 @@ import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { supabase } from '@/lib/supabase'
 import { X } from 'lucide-react'
 import { GhostBanner } from '@/components/shared/GhostBanner'
+import IdCardUploadGate from '@/components/kyc/IdCardUploadGate'
 
 const announcementColors = {
   info: 'bg-blue-50 border-blue-200 text-blue-800',
@@ -77,6 +78,7 @@ export default function MainLayout() {
 
       <CommandPalette />
       <KeyboardShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      <IdCardUploadGate />
     </div>
   )
 }

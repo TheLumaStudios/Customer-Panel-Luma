@@ -141,7 +141,6 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers, on
         })
       }
 
-      console.log('Invoice submission data:', JSON.stringify(invoiceData, null, 2))
       await onSubmit(invoiceData)
       form.reset()
       setItems([{ description: '', quantity: 1, unit_price: 0 }])

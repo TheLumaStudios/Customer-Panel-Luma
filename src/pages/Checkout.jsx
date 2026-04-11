@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCheckoutStore } from '@/stores/checkoutStore'
 import { useProductCache } from '@/contexts/ProductCacheContext'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useCreateSelfInvoice, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
+import { supabase } from '@/lib/supabase'
+import IyzicoPaymentDialog from '@/components/payments/IyzicoPaymentDialog'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Card } from '@/components/ui/card'
@@ -10,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ShoppingCart, Settings, FileText, CreditCard, Trash2, Check, ArrowRight, ArrowLeft } from 'lucide-react'
+import { ShoppingCart, Settings, FileText, CreditCard, Trash2, Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 
 const STEPS = [
   { key: 'cart', label: 'Sepet', icon: ShoppingCart },
@@ -33,8 +36,15 @@ export default function Checkout() {
   const { user } = useAuth()
   const store = useCheckoutStore()
   const { verifyPrice } = useProductCache()
+  const createSelfInvoice = useCreateSelfInvoice()
+  const initializeIyzico = useInitializeIyzicoPayment()
+
+  const [iyzicoOpen, setIyzicoOpen] = useState(false)
+  const [iyzicoContent, setIyzicoContent] = useState('')
+  const [iyzicoUrl, setIyzicoUrl] = useState('')
 
   const stepIndex = STEPS.findIndex(s => s.key === store.step)
+  const isPaying = createSelfInvoice.isPending || initializeIyzico.isPending
 
   const goNext = () => {
     const nextStep = STEPS[stepIndex + 1]
@@ -64,8 +74,50 @@ export default function Checkout() {
       return
     }
 
-    // In production: call iyzico payment init
-    toast.success('Ödeme sayfasına yönlendiriliyorsunuz...')
+    try {
+// 1. Create or reuse unpaid invoice
+      let invoiceId = store.currentInvoiceId
+
+      if (invoiceId) {
+// Reuse if still unpaid, otherwise start fresh
+        const { data: existing } = await supabase
+          .from('invoices')
+          .select('id, status')
+          .eq('id', invoiceId)
+          .maybeSingle()
+        if (!existing || existing.status !== 'unpaid') {
+          invoiceId = null
+          store.setCurrentInvoiceId(null)
+        }
+      }
+
+      if (!invoiceId) {
+        const items = store.items.map(ci => ({
+          type: ci.product_type === 'vds' || ci.product_type === 'vps' || ci.product_type === 'dedicated'
+            ? 'vds'
+            : 'hosting',
+          package_id: ci.package_id,
+          billing_period: store.billingPeriod,
+          quantity: 1,
+        }))
+
+        const invoice = await createSelfInvoice.mutateAsync({ items })
+        invoiceId = invoice.id
+        store.setCurrentInvoiceId(invoiceId)
+      }
+
+// 2. Initialize iyzico payment
+      const result = await initializeIyzico.mutateAsync({
+        invoice_id: invoiceId,
+        return_url: `${window.location.origin}/payment-success`,
+      })
+
+      setIyzicoContent(result.checkoutFormContent || '')
+      setIyzicoUrl(result.paymentPageUrl || '')
+      setIyzicoOpen(true)
+    } catch (error) {
+      toast.error('Ödeme başlatılamadı', { description: error.message })
+    }
   }
 
   if (store.items.length === 0 && store.step === 'cart') {
@@ -146,13 +198,22 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Promo */}
+            {/* Promo (disabled - "Yakında") */}
             <div className="flex gap-2 pt-2">
-              <Input placeholder="Promosyon kodu" value={store.promoCode} onChange={(e) => store.setPromoCode(e.target.value)} className="max-w-xs" />
-              <Button variant="outline" onClick={() => {
-                if (!store.promoCode) return toast.error('Promosyon kodu giriniz')
-                toast.info('Promosyon kodu doğrulanıyor...', { description: 'Geçerli bir kod girildiğinde indirim uygulanacak' })
-              }}>Uygula</Button>
+              <Input
+                placeholder="Promosyon kodu (Yakında)"
+                value={store.promoCode}
+                onChange={(e) => store.setPromoCode(e.target.value)}
+                className="max-w-xs"
+                disabled
+              />
+              <Button
+                variant="outline"
+                disabled
+                onClick={() => toast.info('Promosyon kodları yakında aktif olacak')}
+              >
+                Uygula
+              </Button>
             </div>
 
             {/* Total */}
@@ -213,8 +274,14 @@ export default function Checkout() {
             <Card className="p-5">
               <p className="text-muted-foreground mb-4">Ödeme yönteminizi seçin</p>
               <div className="space-y-3">
-                <Button className="w-full h-12 justify-start gap-3" variant="outline" onClick={handlePayment}>
-                  <CreditCard className="h-5 w-5" /> Kredi Kartı ile Öde (iyzico)
+                <Button
+                  className="w-full h-12 justify-start gap-3"
+                  variant="outline"
+                  onClick={handlePayment}
+                  disabled={isPaying}
+                >
+                  {isPaying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
+                  {isPaying ? 'Ödeme başlatılıyor...' : 'Kredi Kartı ile Öde (iyzico)'}
                 </Button>
                 <Button className="w-full h-12 justify-start gap-3" variant="outline" onClick={() => {
                   toast.info('Havale Bilgileri', {
@@ -234,6 +301,13 @@ export default function Checkout() {
       </div>
 
       <LandingFooter />
+
+      <IyzicoPaymentDialog
+        open={iyzicoOpen}
+        onOpenChange={setIyzicoOpen}
+        paymentPageUrl={iyzicoUrl}
+        htmlContent={iyzicoContent}
+      />
     </div>
   )
 }

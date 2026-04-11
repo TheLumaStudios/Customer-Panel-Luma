@@ -51,6 +51,8 @@ import {
   Key,
   Cloud,
   Shield,
+  Wallet as WalletIcon,
+  Landmark,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -119,6 +121,7 @@ const adminNav = [
     icon: Settings,
     children: [
       { name: 'Sistem Ayarları', path: '/admin/system-settings', icon: Sliders, desc: 'Otomasyon ve fiyatlandırma', color: 'bg-gray-100 text-gray-600' },
+      { name: 'Banka Hesapları', path: '/admin/bank-accounts', icon: Landmark, desc: 'Müşteri havale/EFT bilgileri', color: 'bg-emerald-100 text-emerald-600' },
       { name: 'Genel Ayarlar', path: '/admin/settings', icon: Settings, desc: 'Şirket ve banka bilgileri', color: 'bg-zinc-100 text-zinc-600' },
       { name: 'E-posta Şablonları', path: '/admin/email-templates', icon: Mail, desc: 'Otomatik e-posta şablonları', color: 'bg-pink-100 text-pink-600' },
       { name: 'Cloudflare', path: '/admin/cloudflare', icon: Cloud, desc: 'DNS ve CDN yönetimi', color: 'bg-orange-100 text-orange-600' },
@@ -144,6 +147,8 @@ const customerNav = [
   { name: 'Hostingim', path: '/hosting', icon: ServerIcon },
   { name: 'VDS / VPS', path: '/my-vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
+  { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
+  { name: 'Havale Bilgileri', path: '/bank-info', icon: Landmark },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   {
     name: 'Diğer İşlemler',

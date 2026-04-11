@@ -46,32 +46,32 @@ serve(async (req) => {
       token: token.toString(),
     }
 
-    // Create authorization header
-    const randomString = crypto.randomUUID()
-    const authString = `apiKey:${IYZICO_API_KEY}&randomKey:${randomString}&signature:`
-
+    // --- iyzico v2 auth signature (see payment-iyzico-init for spec) ---
+    const iyzicoUri = '/payment/iyzipos/checkoutform/auth/ecom/detail'
+    const randomString = crypto.randomUUID().replace(/-/g, '')
     const requestString = JSON.stringify(requestPayload)
-    const dataToSign = randomString + requestString
+    const dataToSign = randomString + iyzicoUri + requestString
 
     const encoder = new TextEncoder()
-    const keyData = encoder.encode(IYZICO_SECRET_KEY)
-    const msgData = encoder.encode(dataToSign)
-
     const key = await crypto.subtle.importKey(
       'raw',
-      keyData,
+      encoder.encode(IYZICO_SECRET_KEY),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
     )
+    const signatureBytes = new Uint8Array(
+      await crypto.subtle.sign('HMAC', key, encoder.encode(dataToSign))
+    )
+    const signatureHex = Array.from(signatureBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
 
-    const signature = await crypto.subtle.sign('HMAC', key, msgData)
-    const signatureBase64 = base64Encode(new Uint8Array(signature))
-
-    const authorization = `${authString}${signatureBase64}`
+    const authString = `apiKey:${IYZICO_API_KEY}&randomKey:${randomString}&signature:${signatureHex}`
+    const authorization = `IYZWSv2 ${base64Encode(encoder.encode(authString))}`
 
     // Retrieve payment result
-    const response = await fetch(`${IYZICO_BASE_URL}/payment/iyzipos/checkoutform/auth/ecom/detail`, {
+    const response = await fetch(`${IYZICO_BASE_URL}${iyzicoUri}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -95,6 +95,26 @@ serve(async (req) => {
 
     if (!payment) {
       throw new Error('Payment record not found')
+    }
+
+    // Frontend redirect base (falls back to relative paths)
+    const APP_URL = Deno.env.get('PUBLIC_URL') || ''
+    const successUrl = (invoiceId: string, paymentId: string) =>
+      `${APP_URL}/payment-success?invoice=${invoiceId}&payment=${paymentId}`
+    const failedUrl = (msg: string) =>
+      `${APP_URL}/payment-failed?error=${encodeURIComponent(msg)}`
+
+    // Idempotency: if this payment is already completed, short-circuit so
+    // retried callbacks never double-credit a wallet or re-register a domain.
+    if (payment.status === 'completed') {
+      console.log('↩️ Payment already completed, skipping post-processing')
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': successUrl(payment.invoice_id, payment.id),
+        },
+      })
     }
 
     // Update payment status
@@ -138,40 +158,77 @@ serve(async (req) => {
         })
         .eq('id', payment.invoice_id)
 
-      // If using wallet, deduct amount
-      if (result.paidPrice) {
-        const paidAmount = parseFloat(result.paidPrice)
+      // Branch on invoice item types:
+      //   wallet_topup → credit the wallet
+      //   domain       → trigger reseller registration
+      //   hosting/vds  → no-op (admin provisions manually)
+      //
+      // IMPORTANT: the pre-fix version unconditionally DEBITED customer_credit
+      // on every successful iyzico payment, which silently drove card-paying
+      // customers' wallet balances negative. That logic is removed.
+      const { data: invoiceItems } = await supabaseClient
+        .from('invoice_items')
+        .select('type, amount')
+        .eq('invoice_id', payment.invoice_id)
 
-        // Get current credit
-        const { data: credit } = await supabaseClient
+      const items = invoiceItems || []
+      const topUpAmount = items
+        .filter((i: any) => i.type === 'wallet_topup')
+        .reduce((s: number, i: any) => s + parseFloat(i.amount), 0)
+
+      if (topUpAmount > 0) {
+        // Upsert customer_credit row and record a credit transaction
+        const { data: existingCredit } = await supabaseClient
           .from('customer_credit')
           .select('*')
           .eq('customer_id', payment.customer_id)
-          .single()
+          .maybeSingle()
 
-        if (credit) {
-          const newBalance = credit.balance - paidAmount
+        const currentBalance = parseFloat(existingCredit?.balance ?? '0')
+        const newBalance = currentBalance + topUpAmount
 
-          // Update credit
+        if (existingCredit) {
           await supabaseClient
             .from('customer_credit')
             .update({ balance: newBalance })
             .eq('customer_id', payment.customer_id)
-
-          // Record transaction
+        } else {
           await supabaseClient
-            .from('credit_transactions')
+            .from('customer_credit')
             .insert({
               customer_id: payment.customer_id,
-              type: 'debit',
-              amount: paidAmount,
-              currency: payment.currency,
-              invoice_id: payment.invoice_id,
-              payment_id: payment.id,
-              description: `iyzico payment for invoice ${payment.invoice.invoice_number}`,
-              balance_after: newBalance,
+              balance: newBalance,
+              currency: 'TRY',
             })
         }
+
+        await supabaseClient
+          .from('credit_transactions')
+          .insert({
+            customer_id: payment.customer_id,
+            type: 'credit',
+            amount: topUpAmount,
+            currency: 'TRY',
+            invoice_id: payment.invoice_id,
+            payment_id: payment.id,
+            description: `iyzico wallet top-up (invoice ${payment.invoice.invoice_number})`,
+            balance_after: newBalance,
+          })
+      }
+
+      const hasDomain = items.some((i: any) => i.type === 'domain')
+      if (hasDomain) {
+        // Mark the staged domain_orders row as awaiting reseller register.
+        // Actual registration is performed by the admin/cron follow-up (the
+        // contacts + nameservers were persisted at invoice-create time).
+        // Keeping this out of the callback avoids blocking the 302 redirect
+        // on a slow reseller API round-trip. M1 ships with manual/admin
+        // registration; a follow-up milestone will auto-execute it.
+        await supabaseClient
+          .from('domain_orders')
+          .update({ register_status: 'paid_pending_register' })
+          .eq('invoice_id', payment.invoice_id)
+          .eq('register_status', 'pending')
       }
 
       // Redirect to success page
@@ -179,7 +236,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `/payment-success?invoice=${payment.invoice_id}&payment=${payment.id}`,
+          'Location': successUrl(payment.invoice_id, payment.id),
         },
       })
     } else {
@@ -199,19 +256,20 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `/payment-failed?error=${encodeURIComponent(result.errorMessage || 'Payment failed')}`,
+          'Location': failedUrl(result.errorMessage || 'Payment failed'),
         },
       })
     }
   } catch (error) {
     console.error('iyzico callback error:', error)
 
+    const APP_URL = Deno.env.get('PUBLIC_URL') || ''
     // Redirect to error page
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `/payment-failed?error=${encodeURIComponent(error.message)}`,
+        'Location': `${APP_URL}/payment-failed?error=${encodeURIComponent((error as Error).message)}`,
       },
     })
   }

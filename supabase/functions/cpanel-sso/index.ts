@@ -23,6 +23,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
+    // Admin client for RLS-free reads (ownership is checked manually below)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
     // Authenticate user
     const { data: { user } } = await supabaseClient.auth.getUser()
     if (!user) {
@@ -30,11 +36,11 @@ serve(async (req) => {
     }
 
     // Get user profile/role
-    const { data: profile } = await supabaseClient
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, email')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     const { hosting_id, target } = await req.json()
 
@@ -46,8 +52,8 @@ serve(async (req) => {
       throw new Error('target "cpanel" veya "webmail" olmalı')
     }
 
-    // Get hosting record
-    const { data: hosting, error: hostingError } = await supabaseClient
+    // Get hosting record (admin client bypasses RLS; ownership enforced below)
+    const { data: hosting, error: hostingError } = await supabaseAdmin
       .from('hosting')
       .select('*, server:servers(*)')
       .eq('id', hosting_id)
@@ -57,16 +63,29 @@ serve(async (req) => {
       throw new Error('Hosting kaydı bulunamadı')
     }
 
-    // Authorization: admin can access any, customer can only access own hosting
+    // Authorization: admin can access any, customer can only access their own.
+    // The customer→hosting link goes through the `customers` table. We
+    // resolve the customer row by profile_id first, then fall back to email
+    // because some legacy rows have a null profile_id.
     if (profile?.role !== 'admin') {
-      // Check if this hosting belongs to the customer
-      const { data: customer } = await supabaseClient
+      const { data: byProfile } = await supabaseAdmin
         .from('customers')
         .select('id')
         .eq('profile_id', user.id)
-        .single()
+        .maybeSingle()
 
-      if (!customer || hosting.customer_id !== customer.id) {
+      let customerId = byProfile?.id || null
+
+      if (!customerId && (profile?.email || user.email)) {
+        const { data: byEmail } = await supabaseAdmin
+          .from('customers')
+          .select('id')
+          .eq('email', profile?.email || user.email)
+          .maybeSingle()
+        customerId = byEmail?.id || null
+      }
+
+      if (!customerId || hosting.customer_id !== customerId) {
         throw new Error('Bu hosting paketine erişim yetkiniz yok')
       }
     }
@@ -98,9 +117,11 @@ serve(async (req) => {
       throw new Error('Sunucu kimlik doğrulama bilgisi bulunamadı')
     }
 
-    const ssoUrl = `https://${whmHost}:${whmPort}/json-api/create_user_session?api.version=1&user=${hosting.cpanel_username}&service=${target}`
+    // WHM's create_user_session expects daemon names: cpaneld / webmaild / whostmgrd
+    const serviceName = target === 'webmail' ? 'webmaild' : 'cpaneld'
+    const ssoUrl = `https://${whmHost}:${whmPort}/json-api/create_user_session?api.version=1&user=${hosting.cpanel_username}&service=${serviceName}`
 
-    console.log('cPanel SSO request:', { whmHost, whmPort, user: hosting.cpanel_username, target })
+    console.log('cPanel SSO request:', { whmHost, whmPort, user: hosting.cpanel_username, target, service: serviceName })
 
     const whmResponse = await fetch(ssoUrl, {
       method: 'GET',
@@ -109,16 +130,29 @@ serve(async (req) => {
       },
     })
 
-    const whmData = await whmResponse.json()
+    const rawText = await whmResponse.text()
+    console.log('WHM raw response status:', whmResponse.status)
+    console.log('WHM raw response body:', rawText.substring(0, 2000))
+
+    let whmData: any = null
+    try {
+      whmData = JSON.parse(rawText)
+    } catch (_) {
+      throw new Error(`WHM geçersiz yanıt döndü (status ${whmResponse.status}): ${rawText.substring(0, 300)}`)
+    }
 
     if (!whmResponse.ok || whmData?.metadata?.result !== 1) {
-      const errorMsg = whmData?.metadata?.reason || whmData?.error || 'SSO oturumu oluşturulamadı'
+      const errorMsg =
+        whmData?.metadata?.reason ||
+        whmData?.error ||
+        whmData?.cpanelresult?.error ||
+        `SSO oturumu oluşturulamadı (HTTP ${whmResponse.status})`
       throw new Error(errorMsg)
     }
 
-    const sessionUrl = whmData?.data?.url
+    const sessionUrl = whmData?.data?.url || whmData?.url
     if (!sessionUrl) {
-      throw new Error('Oturum URL bilgisi alınamadı')
+      throw new Error(`Oturum URL bilgisi alınamadı: ${JSON.stringify(whmData).substring(0, 300)}`)
     }
 
     return new Response(

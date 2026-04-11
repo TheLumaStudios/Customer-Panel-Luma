@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTickets, useCreateTicket } from '@/hooks/useTickets'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCustomers } from '@/hooks/useCustomers'
@@ -13,6 +14,7 @@ import { toast } from '@/lib/toast'
 import CustomerTicketForm from '@/components/tickets/CustomerTicketForm'
 
 export default function MyTickets() {
+  const navigate = useNavigate()
   const [formOpen, setFormOpen] = useState(false)
   const { profile } = useAuth()
   const { data: allTickets, isLoading, error } = useTickets()
@@ -27,6 +29,10 @@ export default function MyTickets() {
 
   const handleCreate = () => {
     setFormOpen(true)
+  }
+
+  const openDetail = (ticket) => {
+    navigate(`/tickets/${ticket.id}`)
   }
 
   const handleSubmit = async (data) => {
@@ -183,7 +189,11 @@ export default function MyTickets() {
               </TableHeader>
               <TableBody>
                 {tickets?.map((ticket) => (
-                  <TableRow key={ticket.id}>
+                  <TableRow
+                    key={ticket.id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => openDetail(ticket)}
+                  >
                     <TableCell className="font-medium">
                       #{ticket.ticket_number}
                     </TableCell>
@@ -205,7 +215,15 @@ export default function MyTickets() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetail(ticket)
+                        }}
+                        title="Detayları görüntüle"
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -222,6 +240,7 @@ export default function MyTickets() {
         onOpenChange={setFormOpen}
         onSubmit={handleSubmit}
       />
+
     </div>
   )
 }

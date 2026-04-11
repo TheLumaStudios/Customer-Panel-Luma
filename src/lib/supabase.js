@@ -17,10 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 // Debug: Test Supabase connection
-console.log('Supabase client created with URL:', supabaseUrl)
-
 // Test query
 supabase.from('domains').select('count', { count: 'exact', head: true })
   .then(({ count, error }) => {
-    console.log('Supabase test query - domains count:', count, 'error:', error)
-  })
+})
