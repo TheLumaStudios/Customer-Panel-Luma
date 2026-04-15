@@ -122,13 +122,11 @@ function EmailPromoHero() {
         },
         body: JSON.stringify({
           items: [{
-            type: 'hosting',
-            description: `Kurumsal E-Posta - ${form.domain} (Kart Doğrulama)`,
+            type: 'addon',
+            description: `Kurumsal E-Posta Aktivasyon - ${form.domain}`,
             quantity: 1,
-            unit_price: 1, // 1₺ doğrulama ücreti (iyzico 0₺ kabul etmez)
-            billing_period: 'monthly',
+            unit_price: 1, // 1₺ kart doğrulama (iyzico 0₺ kabul etmez)
           }],
-          promo_code: 'ILKAY',
         }),
       })
 
