@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { MessageSquare, Phone, BookOpen, ArrowRight } from 'lucide-react'
+import { MessageSquare, Phone, Mail, MapPin, ArrowRight, User } from 'lucide-react'
 import { toast } from '@/lib/toast'
 
 export default function ContactForm() {
@@ -18,8 +18,8 @@ export default function ContactForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    toast.success('Message sent successfully!', {
-      description: 'We will get back to you within 2 business hours.',
+    toast.success('Mesajınız gönderildi', {
+      description: 'En kısa sürede sizinle iletişime geçeceğiz.',
     })
     setFormData({
       firstName: '',
@@ -31,186 +31,162 @@ export default function ContactForm() {
   }
 
   return (
-    <section className="py-16 bg-slate-950">
+    <section id="iletisim" className="py-24 bg-slate-950">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-3 gap-12">
+        <div className="grid lg:grid-cols-5 gap-12">
           {/* Left: Contact Form */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Send us a message</h2>
-              <p className="text-slate-400 mb-8">
-                Fill out the form below and we will get back to you within 2 business hours.
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Name Fields */}
-                <div className="grid md:grid-cols-2 gap-4">
+              <h3 className="text-xl font-bold text-white mb-6">Bize Mesaj Gönderin</h3>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
+                    <Label htmlFor="firstName" className="text-slate-300">Ad</Label>
                     <Input
                       id="firstName"
-                      placeholder="John"
+                      placeholder="Adınız"
                       value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
+                    <Label htmlFor="lastName" className="text-slate-300">Soyad</Label>
                     <Input
                       id="lastName"
-                      placeholder="Doe"
+                      placeholder="Soyadınız"
                       value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Email */}
                 <div>
-                  <Label htmlFor="email" className="text-slate-300">Work Email</Label>
+                  <Label htmlFor="email" className="text-slate-300">E-posta</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="john@company.com"
+                    placeholder="ornek@mail.com"
                     value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                     required
                   />
                 </div>
 
-                {/* Department */}
                 <div>
-                  <Label className="text-slate-300">Inquiry Department</Label>
+                  <Label className="text-slate-300 mb-2 block">Departman</Label>
                   <RadioGroup
                     value={formData.department}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, department: value })
-                    }
-                    className="flex gap-4 mt-2"
+                    onValueChange={(value) => setFormData({ ...formData, department: value })}
+                    className="flex gap-4"
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="sales" id="sales" />
-                      <Label htmlFor="sales" className="cursor-pointer font-normal text-slate-300">
-                        Sales
-                      </Label>
+                      <Label htmlFor="sales" className="cursor-pointer font-normal text-slate-300">Satış</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="technical" id="technical" />
-                      <Label htmlFor="technical" className="cursor-pointer font-normal text-slate-300">
-                        Technical
-                      </Label>
+                      <Label htmlFor="technical" className="cursor-pointer font-normal text-slate-300">Teknik</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="billing" id="billing" />
-                      <Label htmlFor="billing" className="cursor-pointer font-normal text-slate-300">
-                        Billing
-                      </Label>
+                      <Label htmlFor="billing" className="cursor-pointer font-normal text-slate-300">Muhasebe</Label>
                     </div>
                   </RadioGroup>
                 </div>
 
-                {/* Message */}
                 <div>
-                  <Label htmlFor="message" className="text-slate-300">Message</Label>
+                  <Label htmlFor="message" className="text-slate-300">Mesajınız</Label>
                   <Textarea
                     id="message"
-                    placeholder="How can we help your business today?"
+                    placeholder="Size nasıl yardımcı olabiliriz?"
                     value={formData.message}
-                    onChange={(e) =>
-                      setFormData({ ...formData, message: e.target.value })
-                    }
-                    rows={6}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    rows={5}
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                     required
                   />
                 </div>
 
-                {/* Submit */}
-                <div>
-                  <Button type="submit" size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white">
-                    Send a Message
-                  </Button>
-                  <p className="text-xs text-slate-400 mt-3 text-center">
-                    By submitting this form, you agree to our privacy policy and terms of service.
-                  </p>
-                </div>
+                <Button type="submit" size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white">
+                  Mesaj Gönder
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
               </form>
             </div>
           </div>
 
-          {/* Right: Immediate Support */}
-          <div className="space-y-6">
+          {/* Right: Contact Info (BTK Uyumlu) */}
+          <div className="lg:col-span-2 space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-white mb-2">Immediate Support</h3>
+              <h3 className="text-xl font-bold text-white mb-2">İletişim</h3>
               <p className="text-sm text-slate-400">
-                Skip the queue with our real-time channels.
+                Aşağıdaki bilgilerden bize doğrudan ulaşabilirsiniz.
               </p>
             </div>
 
-            {/* Live Chat */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <MessageSquare className="h-6 w-6 text-indigo-400" />
+            {/* Yetkili Bilgileri - BTK Zorunlu */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <User className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-white text-sm">Yetkili</h4>
+                  <p className="text-sm text-slate-400 mt-0.5">Enes POYRAZ</p>
+                </div>
               </div>
-              <h4 className="font-bold text-white mb-2">Live Chat</h4>
-              <p className="text-sm text-slate-400 mb-4">
-                Average response time: &lt; 30 seconds. Perfect for quick technical fixes.
+
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <MapPin className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-white text-sm">Açık Posta Adresi</h4>
+                  <p className="text-sm text-slate-400 mt-0.5">Üçevler Mah. Dumlupınar Cd. No:5/A Nilüfer/Bursa</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <Mail className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-white text-sm">Elektronik İletişim Adresi</h4>
+                  <a href="mailto:info@lumayazilim.com" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">info@lumayazilim.com</a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <Phone className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-white text-sm">Telefon Numarası</h4>
+                  <a href="tel:+905449796257" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">0544 979 62 57</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Destek Kanalları */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
+              <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                <MessageSquare className="h-5 w-5 text-indigo-400" />
+              </div>
+              <h4 className="font-semibold text-white mb-1">Destek Talebi</h4>
+              <p className="text-sm text-slate-400 mb-3">
+                Müşteri panelinizden destek talebi açarak teknik ekibimize ulaşabilirsiniz.
               </p>
               <a
-                href="#"
+                href="/login"
                 className="text-indigo-400 text-sm font-medium inline-flex items-center gap-1 hover:underline"
               >
-                Launch Chat <ArrowRight className="h-4 w-4" />
+                Panele Git <ArrowRight className="h-4 w-4" />
               </a>
-            </div>
-
-            {/* Phone Support */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <Phone className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">Phone Support</h4>
-              <p className="text-sm text-slate-400 mb-4">
-                Available 24/7 for enterprise customers. Direct line to senior engineers.
-              </p>
-              <a
-                href="#"
-                className="text-indigo-400 text-sm font-medium inline-flex items-center gap-1 hover:underline"
-              >
-                View Numbers <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-
-            {/* Documentation */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/30 transition-colors">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <BookOpen className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">Documentation</h4>
-              <p className="text-sm text-slate-400 mb-4">
-                Step-by-step guides for API integrations, server setup, and migrations.
-              </p>
-              <a
-                href="#"
-                className="text-indigo-400 text-sm font-medium inline-flex items-center gap-1 hover:underline"
-              >
-                Visit Knowledge Base <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-
-            {/* All Systems Operational */}
-            <div className="text-center pt-6">
-              <p className="font-bold text-white mb-1">All Systems Operational</p>
-              <p className="text-sm text-slate-400">
-                Our global network is performing optimally
-              </p>
             </div>
           </div>
         </div>

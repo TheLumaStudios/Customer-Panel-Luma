@@ -49,7 +49,10 @@ export default function LandingFooter() {
             <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-xs">
               Yüksek performanslı altyapı ve kurumsal destek ile dijital varlığınızı güçlendirin.
             </p>
-            <div className="space-y-2.5">
+            <div className="space-y-2.5" id="iletisim">
+              <div className="text-sm text-slate-400">
+                <strong className="text-slate-300">Yetkili:</strong> Enes POYRAZ
+              </div>
               <a href="mailto:info@lumayazilim.com" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
                 <Mail className="h-4 w-4" />
                 info@lumayazilim.com
