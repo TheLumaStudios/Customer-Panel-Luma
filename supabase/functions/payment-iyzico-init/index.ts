@@ -116,13 +116,44 @@ serve(async (req) => {
     const conversationId = `${invoice_id}-${Date.now()}`
 
     // Prepare basket items
-    const basketItems = invoice.items.map((item: any) => ({
+    // iyzico requires: sum(basketItems.price) === price (invoice.total)
+    // Items store pre-tax amounts but invoice.total includes tax,
+    // so we proportionally distribute the total across items.
+    const itemsRaw = invoice.items.map((item: any) => ({
       id: item.id,
-      name: item.description.substring(0, 100), // Max 100 chars
+      name: item.description.substring(0, 100),
       category1: item.type,
       itemType: 'VIRTUAL',
-      price: item.amount.toFixed(2),
+      rawAmount: parseFloat(item.amount) || 0,
     }))
+    const rawSum = itemsRaw.reduce((s: number, i: any) => s + i.rawAmount, 0)
+    const invoiceTotal = parseFloat(invoice.total) || 0
+
+    const basketItems = itemsRaw.map((item: any, idx: number) => {
+      let itemPrice: number
+      if (rawSum > 0) {
+        // Distribute total proportionally
+        itemPrice = (item.rawAmount / rawSum) * invoiceTotal
+      } else {
+        // All items 0 → split evenly
+        itemPrice = invoiceTotal / itemsRaw.length
+      }
+      // Last item gets the rounding remainder
+      if (idx === itemsRaw.length - 1) {
+        const allocated = itemsRaw.slice(0, -1).reduce((s: number, _: any, i: number) => {
+          const p = rawSum > 0 ? (itemsRaw[i].rawAmount / rawSum) * invoiceTotal : invoiceTotal / itemsRaw.length
+          return s + Math.round(p * 100) / 100
+        }, 0)
+        itemPrice = invoiceTotal - allocated
+      }
+      return {
+        id: item.id,
+        name: item.name,
+        category1: item.category1,
+        itemType: item.itemType,
+        price: (Math.round(itemPrice * 100) / 100).toFixed(2),
+      }
+    })
 
     // Wallet top-ups must be single-payment only: taksitli olarak cüzdana
     // para yüklemek mantıksız (komisyon + iade riski). Sunucu tarafında
