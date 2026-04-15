@@ -109,7 +109,7 @@ serve(async (req) => {
       ip: 'y', // use main shared IP
       cgi: '1',
       frontpage: '0',
-      cpmod: 'x3', // cPanel theme
+      cpmod: 'jupiter', // cPanel theme
     })
 
     // Call WHM API

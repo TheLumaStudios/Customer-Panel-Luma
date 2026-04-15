@@ -44,10 +44,18 @@ serve(async (req) => {
     let userId: string | null = null
 
     if (_override_user_id) {
-      // Called from invoice-pay or other service role functions
-      const isServiceRole = authHeader?.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '__NONE__')
-      if (isServiceRole) {
-        userId = _override_user_id
+      // Check if caller is service_role by decoding JWT payload
+      try {
+        const token = (authHeader || '').replace('Bearer ', '')
+        const payloadB64 = token.split('.')[1]
+        if (payloadB64) {
+          const payload = JSON.parse(atob(payloadB64))
+          if (payload.role === 'service_role') {
+            userId = _override_user_id
+          }
+        }
+      } catch {
+        // Not a valid JWT, ignore
       }
     }
 
@@ -109,17 +117,18 @@ serve(async (req) => {
     const cpanelUsername = cleanDomain.substring(0, 8) + Math.floor(Math.random() * 100)
     const cpanelPassword = generatePassword()
 
-    // Get the default server for email provisioning
+    // Get the cPanel server (is_active=true, server_type=cpanel)
     const { data: server } = await supabaseAdmin
       .from('servers')
       .select('*')
-      .eq('status', 'active')
+      .eq('is_active', true)
+      .eq('server_type', 'cpanel')
       .order('created_at', { ascending: true })
       .limit(1)
       .single()
 
     if (!server) {
-      return json({ success: false, error: 'Aktif sunucu bulunamadı' }, 500)
+      return json({ success: false, error: 'Aktif cPanel sunucusu bulunamadı' }, 500)
     }
 
     // Create hosting record first
@@ -133,27 +142,33 @@ serve(async (req) => {
         cpanel_username: cpanelUsername,
         cpanel_password: cpanelPassword,
         server_ip: server.ip_address,
-        nameserver_1: server.nameserver_1 || 'ns1.lumayazilim.com',
-        nameserver_2: server.nameserver_2 || 'ns2.lumayazilim.com',
-        status: 'pending',
+        nameserver_1: server.nameservers?.[0] || 'ns1.lumayazilim.com',
+        nameserver_2: server.nameservers?.[1] || 'ns2.lumayazilim.com',
+        status: 'active',
         billing_cycle: 'monthly',
-        next_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        notes: 'Kurumsal E-Posta Kampanyası - 1 yıl taahhütlü. İlk ay bedava, 2-3. ay 9,90₺, 4-12. ay 49,90₺/ay',
+        disk_space_gb: 10,
+        bandwidth_gb: 100,
+        start_date: new Date().toISOString(),
+        expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        next_invoice_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        notes: 'Kurumsal E-Posta Kampanyası - 1 yıl taahhütlü',
       })
       .select()
       .single()
 
     if (hostingError || !hosting) {
-      console.error('Hosting insert failed:', hostingError)
-      return json({ success: false, error: 'Hosting kaydı oluşturulamadı' }, 500)
+      console.error('Hosting insert failed:', JSON.stringify(hostingError))
+      return json({ success: false, error: 'Hosting kaydı oluşturulamadı: ' + (hostingError?.message || 'unknown') }, 500)
     }
 
     // Create cPanel account via WHM API
     const WHM_HOST = server.hostname || Deno.env.get('WHM_HOST')
     const WHM_USER = server.username || Deno.env.get('WHM_USERNAME') || 'root'
+    // Server may store token in api_token or access_hash field
     const WHM_TOKEN = server.api_token || Deno.env.get('WHM_API_TOKEN')
 
     let cpanelCreated = false
+    let whmDebug = ''
 
     if (WHM_HOST && WHM_TOKEN) {
       try {
@@ -176,7 +191,7 @@ serve(async (req) => {
           ip: 'y',
           cgi: '1',
           frontpage: '0',
-          cpmod: 'x3',
+          cpmod: 'jupiter',
         })
 
         const whmUrl = `https://${WHM_HOST}:2087/json-api/createacct?${params.toString()}`
@@ -187,7 +202,12 @@ serve(async (req) => {
 
         const whmResult = await whmRes.json()
 
-        if (whmResult.metadata?.result === 1) {
+        console.log('WHM response:', JSON.stringify(whmResult).substring(0, 500))
+
+        // WHM response format varies: metadata.result or result[0].status
+        const whmSuccess = whmResult.metadata?.result === 1 || whmResult.result?.[0]?.status === 1
+
+        if (whmSuccess) {
           cpanelCreated = true
           console.log(`✅ cPanel account created: ${cpanelUsername}@${domain}`)
 
@@ -197,11 +217,24 @@ serve(async (req) => {
             .update({ status: 'active' })
             .eq('id', hosting.id)
         } else {
-          console.error('WHM createacct failed:', whmResult.metadata?.reason)
-          // Still continue - admin can provision manually
+          whmDebug = whmResult.metadata?.reason || JSON.stringify(whmResult).substring(0, 500)
+          console.error('WHM createacct failed:', whmDebug)
         }
-      } catch (whmErr) {
-        console.error('WHM API error:', whmErr)
+      } catch (whmErr: any) {
+        console.error('WHM API error:', whmErr?.message || whmErr)
+        // Return the WHM error for debugging
+        return json({
+          success: true,
+          hosting_id: hosting.id,
+          cpanel_created: false,
+          whm_error: whmErr?.message || String(whmErr),
+          credentials: {
+            domain,
+            username: cpanelUsername,
+            password: cpanelPassword,
+            server: WHM_HOST,
+          },
+        })
       }
     } else {
       console.log('WHM credentials not configured, skipping auto-provision')
@@ -212,7 +245,7 @@ serve(async (req) => {
       await supabaseAdmin.from('provisioning_queue').insert({
         service_type: 'hosting',
         service_id: hosting.id,
-        status: 'pending',
+        status: 'active',
         metadata: {
           domain,
           username: cpanelUsername,
@@ -320,6 +353,7 @@ serve(async (req) => {
       success: true,
       hosting_id: hosting.id,
       cpanel_created: cpanelCreated,
+      whm_debug: whmDebug || undefined,
       credentials: {
         domain,
         username: cpanelUsername,
