@@ -142,8 +142,8 @@ serve(async (req) => {
         cpanel_username: cpanelUsername,
         cpanel_password: cpanelPassword,
         server_ip: server.ip_address,
-        nameserver_1: server.nameservers?.[0] || 'ns1.lumayazilim.com',
-        nameserver_2: server.nameservers?.[1] || 'ns2.lumayazilim.com',
+        nameserver_1: server.nameservers?.[0] || 'ns1.thelumastudios.com',
+        nameserver_2: server.nameservers?.[1] || 'ns2.thelumastudios.com',
         status: 'active',
         billing_cycle: 'monthly',
         disk_space_gb: 10,
@@ -362,8 +362,8 @@ serve(async (req) => {
         cpanel_url: `https://${server.hostname || server.ip_address}:2083`,
         webmail_url: `https://${server.hostname || server.ip_address}:2096`,
         nameservers: [
-          server.nameserver_1 || 'ns1.lumayazilim.com',
-          server.nameserver_2 || 'ns2.lumayazilim.com',
+          server.nameserver_1 || 'ns1.thelumastudios.com',
+          server.nameserver_2 || 'ns2.thelumastudios.com',
         ],
       },
       pricing: {
