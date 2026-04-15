@@ -247,8 +247,36 @@ serve(async (req) => {
       })
     }
 
-    // Schedule next month's invoice (9,90₺ - month 2)
-    // cron-auto-invoice will handle this based on next_due_date
+    // --- iyzico Abonelik Oluştur (3D'siz otomatik çekim için) ---
+    // Kart bilgisi iyzico checkout'ta zaten kaydedildi (cardUserKey).
+    // Şimdi subscription-create ile aylık abonelik planı oluştur.
+    try {
+      const subRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/subscription-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          customer_id: customerRow.id,
+          hosting_id: hosting.id,
+          // E-Posta kampanyası özel fiyatlandırma:
+          // iyzico abonelik 2. aydan itibaren otomatik çekim yapacak
+          // 2-3. ay: 9,90₺ → sonra plan güncellenir 49,90₺
+          custom_price: 9.90,
+          billing_cycle: 'monthly',
+          campaign: 'email-promo',
+        }),
+      })
+      const subResult = await subRes.json()
+      if (subResult.success) {
+        console.log('✅ iyzico subscription created for email promo')
+      } else {
+        console.error('Subscription creation failed (non-fatal):', subResult.error)
+      }
+    } catch (subErr) {
+      console.error('Subscription creation error (non-fatal):', subErr)
+    }
 
     // Send welcome email
     try {

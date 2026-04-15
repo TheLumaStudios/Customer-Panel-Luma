@@ -145,6 +145,35 @@ serve(async (req) => {
         })
         .eq('id', payment.id)
 
+      // --- Kart bilgisini kaydet (3D'siz sonraki ödemeler için) ---
+      if (result.cardUserKey && result.paymentItems?.[0]?.cardToken) {
+        try {
+          const cardAssociation = result.cardAssociation || ''
+          const cardFamily = result.cardFamily || ''
+          const lastFour = result.binNumber ? result.binNumber.slice(-4) : '****'
+          const cardAlias = `${cardAssociation} ${cardFamily} *${lastFour}`
+
+          await supabaseClient
+            .from('saved_cards')
+            .upsert({
+              customer_id: payment.customer_id,
+              card_user_key: result.cardUserKey,
+              card_token: result.paymentItems[0].cardToken,
+              card_alias: cardAlias,
+              last_four_digits: lastFour,
+              card_type: result.cardType || '',
+              card_association: cardAssociation,
+              card_family: cardFamily,
+              bin_number: result.binNumber || '',
+              status: 'active',
+            }, { onConflict: 'customer_id,card_token' })
+
+          console.log('💳 Card saved for future payments:', cardAlias)
+        } catch (cardErr) {
+          console.error('Card save failed (non-fatal):', cardErr)
+        }
+      }
+
       // Update invoice
       await supabaseClient
         .from('invoices')
