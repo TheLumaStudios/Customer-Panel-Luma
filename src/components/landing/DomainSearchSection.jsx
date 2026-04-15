@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search } from 'lucide-react'
+import { Search, CheckCircle2, XCircle, ShoppingCart, Globe } from 'lucide-react'
 import { useDomainSearch, useDomainPricing } from '@/hooks/useDomainSearch'
 import { useExchangeRate } from '@/hooks/useCurrency'
 import { useNavigate } from 'react-router-dom'
@@ -24,14 +24,12 @@ export default function DomainSearchSection() {
 
   const PROFIT_MARGIN_PERCENT = 10
 
-  // Psychological pricing
   const toPsychologicalPrice = (price) => {
     if (price <= 0) return 0
     const rounded = Math.ceil(price)
     return rounded - 0.01
   }
 
-  // Add profit margin to pricing
   const pricingWithMargin = pricing?.map(p => {
     if (p.price <= 0) return { ...p, price: 0 }
     const priceWithMargin = p.price * (1 + PROFIT_MARGIN_PERCENT / 100)
@@ -39,9 +37,14 @@ export default function DomainSearchSection() {
     return { ...p, price: psychPrice }
   }) || []
 
-  const popularExtensions = ['com', 'net', 'org', 'io']
+  const popularExtensions = [
+    { ext: 'com', label: '.com' },
+    { ext: 'net', label: '.net' },
+    { ext: 'org', label: '.org' },
+    { ext: 'io', label: '.io' },
+    { ext: 'com.tr', label: '.com.tr' },
+  ]
 
-  // Format price based on currency
   const formatPrice = (usdPrice) => {
     if (currency === 'TRY' && exchangeRate?.sellRate) {
       const tryPrice = usdPrice * exchangeRate.sellRate
@@ -57,7 +60,7 @@ export default function DomainSearchSection() {
       return
     }
 
-    const cleanDomain = searchTerm.replace(/\.(com|net|org|io|co|tr|app|dev|ai)$/i, '').toLowerCase()
+    const cleanDomain = searchTerm.replace(/\.(com|net|org|io|co|tr|app|dev|ai|com\.tr)$/i, '').toLowerCase()
 
     try {
       const results = await domainSearch.mutateAsync({
@@ -66,7 +69,6 @@ export default function DomainSearchSection() {
         period: 1,
       })
 
-      // Merge pricing data with results
       const resultsWithPricing = results.map(result => {
         const pricingInfo = pricingWithMargin?.find(p => p.tld === result.tld || p.extension === result.tld)
         return {
@@ -79,14 +81,10 @@ export default function DomainSearchSection() {
       setSearchResults(resultsWithPricing)
 
       if (resultsWithPricing.every(r => !r.available)) {
-        toast.error('Domain müsait değil', {
-          description: 'Farklı uzantı deneyin'
-        })
+        toast.error('Domain müsait değil', { description: 'Farklı uzantı deneyin' })
       }
     } catch (error) {
-      toast.error('Domain sorgulanamadı', {
-        description: error.message
-      })
+      toast.error('Domain sorgulanamadı', { description: error.message })
     }
   }
 
@@ -109,86 +107,123 @@ export default function DomainSearchSection() {
     }
 
     addToCart(itemWithPricing)
-    toast.success('Sepete eklendi', {
-      description: result.domain
-    })
+    toast.success('Sepete eklendi', { description: result.domain })
   }
 
   return (
-    <section className="py-16 bg-background">
-      <div className="container px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold mb-2">Mükemmel Domaininizi Bulun</h2>
-            <p className="text-muted-foreground">Domain adınızı arayın ve hemen satın alın</p>
+    <section className="py-20 bg-muted/30">
+      <div className="container px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-4 py-1.5 mb-6">
+            <Globe className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Alan Adı Sorgula</span>
           </div>
+          <h2 className="text-3xl lg:text-4xl font-bold mb-3">
+            Hayalinizdeki Domaini Bulun
+          </h2>
+          <p className="text-muted-foreground text-lg">
+            500+ uzantı arasından markanıza en uygun alan adını arayın
+          </p>
+        </div>
 
+        {/* Search Box */}
+        <div className="bg-card border border-border rounded-2xl p-6 lg:p-8 shadow-lg">
           {/* Search Input */}
           <div className="flex gap-3 mb-6">
-            <div className="flex-1 flex items-center gap-2 border border-border rounded-lg px-4 py-3 bg-input focus-within:ring-2 focus-within:ring-ring">
-              <Search className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1 flex items-center gap-3 border border-border rounded-xl px-4 py-3.5 bg-background focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30 transition-all">
+              <Search className="h-5 w-5 text-muted-foreground shrink-0" />
               <Input
                 type="text"
-                placeholder="example.com"
+                placeholder="ornek.com"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
-            <Button size="lg" onClick={handleSearch} disabled={domainSearch.isPending} className="px-8">
-              {domainSearch.isPending ? 'Aranıyor...' : 'Ara'}
+            <Button
+              size="lg"
+              onClick={handleSearch}
+              disabled={domainSearch.isPending}
+              className="px-8 h-[52px] bg-indigo-600 hover:bg-indigo-500 shadow-sm rounded-xl"
+            >
+              {domainSearch.isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Aranıyor
+                </div>
+              ) : 'Sorgula'}
             </Button>
           </div>
 
-          {/* Popular Extensions */}
-          <div className="flex flex-wrap gap-3 justify-center">
-            {popularExtensions.map((ext) => {
+          {/* Extensions */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {popularExtensions.map(({ ext, label }) => {
               const extPricing = pricingWithMargin?.find(p => p.extension === ext)
               return (
-                <Badge
+                <button
                   key={ext}
-                  variant={selectedExtension === ext ? 'default' : 'secondary'}
-                  className="px-4 py-2 text-sm font-medium cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
                   onClick={() => setSelectedExtension(ext)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedExtension === ext
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                  }`}
                 >
-                  .{ext} {extPricing && `- ${formatPrice(extPricing.price)}/yıl`}
-                </Badge>
+                  {label}
+                  {extPricing && (
+                    <span className="ml-1.5 opacity-75">{formatPrice(extPricing.price)}</span>
+                  )}
+                </button>
               )
             })}
           </div>
 
-          {/* Search Results */}
+          {/* Results */}
           {searchResults.length > 0 && (
             <div className="mt-6 space-y-3">
               {searchResults.map((result) => (
                 <div
                   key={result.domain}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary transition-colors"
+                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                    result.available
+                      ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30'
+                      : 'border-border bg-muted/30'
+                  }`}
                 >
-                  <div>
-                    <div className="font-semibold">{result.domain}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {result.available ? (
-                        <span className="text-primary">Müsait</span>
-                      ) : (
-                        <span className="text-destructive">Alınmış</span>
-                      )}
+                  <div className="flex items-center gap-3">
+                    {result.available ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                    )}
+                    <div>
+                      <div className="font-semibold">{result.domain}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {result.available ? 'Bu domain müsait!' : 'Bu domain alınmış'}
+                      </div>
                     </div>
                   </div>
                   {result.available && (
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="font-bold">{formatPrice(result.price)}</div>
+                        <div className="font-bold text-lg">{formatPrice(result.price)}</div>
                         <div className="text-xs text-muted-foreground">/yıl</div>
                       </div>
                       <Button
-                        size="sm"
                         onClick={() => handleAddToCart(result)}
                         disabled={isInCart(result.domain)}
+                        className="bg-indigo-600 hover:bg-indigo-500"
                       >
-                        {isInCart(result.domain) ? 'Sepette' : 'Sepete Ekle'}
+                        {isInCart(result.domain) ? (
+                          'Sepette'
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-4 w-4 mr-1.5" />
+                            Sepete Ekle
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}

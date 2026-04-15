@@ -218,17 +218,47 @@ serve(async (req) => {
 
       const hasDomain = items.some((i: any) => i.type === 'domain')
       if (hasDomain) {
-        // Mark the staged domain_orders row as awaiting reseller register.
-        // Actual registration is performed by the admin/cron follow-up (the
-        // contacts + nameservers were persisted at invoice-create time).
-        // Keeping this out of the callback avoids blocking the 302 redirect
-        // on a slow reseller API round-trip. M1 ships with manual/admin
-        // registration; a follow-up milestone will auto-execute it.
         await supabaseClient
           .from('domain_orders')
           .update({ register_status: 'paid_pending_register' })
           .eq('invoice_id', payment.invoice_id)
           .eq('register_status', 'pending')
+      }
+
+      // VDS/VPS siparişleri: ödeme sonrası admin onayı için kuyruğa al
+      const hasVds = items.some((i: any) => i.type === 'vds')
+      if (hasVds) {
+        // Check if vds_orders row already exists (created at invoice time)
+        const { data: existingVdsOrder } = await supabaseClient
+          .from('vds_orders')
+          .select('id')
+          .eq('invoice_id', payment.invoice_id)
+          .eq('order_status', 'pending')
+          .maybeSingle()
+
+        if (existingVdsOrder) {
+          // Update existing order to paid_pending (awaiting admin approval)
+          await supabaseClient
+            .from('vds_orders')
+            .update({ order_status: 'paid_pending', updated_at: new Date().toISOString() })
+            .eq('invoice_id', payment.invoice_id)
+            .eq('order_status', 'pending')
+        } else {
+          // Create vds_orders row from invoice items
+          const vdsItems = items.filter((i: any) => i.type === 'vds')
+          for (const item of vdsItems) {
+            await supabaseClient
+              .from('vds_orders')
+              .insert({
+                invoice_id: payment.invoice_id,
+                customer_id: payment.customer_id,
+                package_name: (item as any).description || 'VDS',
+                monthly_price: parseFloat((item as any).amount) || 0,
+                order_status: 'paid_pending',
+              })
+          }
+        }
+        console.log('📦 VDS order(s) queued for admin approval')
       }
 
       // Redirect to success page

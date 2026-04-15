@@ -8,7 +8,7 @@ import PricingCTA from '@/components/landing/PricingCTA'
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-950">
       <LandingHeader />
       <main>
         <PricingHero />

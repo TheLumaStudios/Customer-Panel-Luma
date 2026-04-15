@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key } from 'lucide-react'
+import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import CustomerForm from '@/components/customers/CustomerForm'
 import SendSmsModal from '@/components/customers/SendSmsModal'
@@ -458,7 +458,12 @@ export default function Customers() {
                       {customer.customer_code}
                     </TableCell>
                     <TableCell>
-                      {customer.full_name || customer.profile?.full_name || '-'}
+                      <div className="flex items-center gap-1.5">
+                        {!(customer.id_card_front_url && customer.id_card_back_url) && (
+                          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" title="Kimlik doğrulaması tamamlanmamış" />
+                        )}
+                        {customer.full_name || customer.profile?.full_name || '-'}
+                      </div>
                     </TableCell>
                     <TableCell>{customer.email || customer.profile?.email || '-'}</TableCell>
                     <TableCell>{customer.phone || customer.profile?.phone || '-'}</TableCell>

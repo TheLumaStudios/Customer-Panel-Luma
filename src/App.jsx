@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { PublicRoute } from '@/components/auth/PublicRoute'
 import MainLayout from '@/components/layout/MainLayout'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import CookieConsent from '@/components/CookieConsent'
 
 import LandingPage from '@/pages/LandingPage'
 import FeaturesPage from '@/pages/FeaturesPage'
@@ -21,7 +22,12 @@ import PleskHostingPage from '@/pages/PleskHostingPage'
 import ResellerHostingPage from '@/pages/ResellerHostingPage'
 import MinecraftPage from '@/pages/MinecraftPage'
 import CsgoPage from '@/pages/CsgoPage'
-import DomainPage from '@/pages/DomainPage'
+import PrivacyPolicy from '@/pages/legal/PrivacyPolicy'
+import TermsOfService from '@/pages/legal/TermsOfService'
+import KVKK from '@/pages/legal/KVKK'
+import DistanceSalesAgreement from '@/pages/legal/DistanceSalesAgreement'
+import About from '@/pages/legal/About'
+import DeliveryReturn from '@/pages/legal/DeliveryReturn'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import AdminDashboard from '@/pages/admin/Dashboard'
@@ -45,6 +51,7 @@ import Contracts from '@/pages/admin/Contracts'
 import Analytics from '@/pages/admin/Analytics'
 import Employees from '@/pages/admin/Employees'
 import Approvals from '@/pages/admin/Approvals'
+import VdsOrders from '@/pages/admin/VdsOrders'
 import MyDomains from '@/pages/customer/MyDomains'
 import MyHosting from '@/pages/customer/MyHosting'
 import MyVDS from '@/pages/customer/MyVDS'
@@ -57,8 +64,6 @@ import BankInfo from '@/pages/customer/BankInfo'
 import TicketDetail from '@/pages/customer/TicketDetail'
 import PaymentSuccess from '@/pages/PaymentSuccess'
 import PaymentFailed from '@/pages/PaymentFailed'
-import DomainSearch from '@/pages/DomainSearch'
-import DomainCheckout from '@/pages/DomainCheckout'
 import CloudflareManager from '@/pages/admin/CloudflareManager'
 import EmailTemplates from '@/pages/admin/EmailTemplates'
 import TicketDepartments from '@/pages/admin/TicketDepartments'
@@ -90,6 +95,12 @@ function App() {
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/kvkk" element={<KVKK />} />
+          <Route path="/distance-sales" element={<DistanceSalesAgreement />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/delivery-return" element={<DeliveryReturn />} />
           <Route path="/vps" element={<VpsPage />} />
           <Route path="/vds" element={<VdsPage />} />
           <Route path="/dedicated" element={<DedicatedPage />} />
@@ -99,7 +110,6 @@ function App() {
           <Route path="/reseller-hosting" element={<ResellerHostingPage />} />
           <Route path="/minecraft" element={<MinecraftPage />} />
           <Route path="/csgo" element={<CsgoPage />} />
-          <Route path="/domain" element={<DomainPage />} />
 
           {/* Auth pages - redirect authenticated users */}
           <Route
@@ -140,13 +150,12 @@ function App() {
             <Route path="customers/:id/edit" element={<CustomerFormPage />} />
             <Route path="customers/:id" element={<CustomerDetails />} />
             <Route path="employees" element={<Employees />} />
-            <Route path="domain-search" element={<DomainSearch />} />
-            <Route path="domain-checkout" element={<DomainCheckout />} />
             <Route path="domains" element={<Domains />} />
             <Route path="hosting" element={<Hosting />} />
             <Route path="hosting-packages" element={<HostingPackages />} />
             <Route path="product-packages" element={<ProductPackages />} />
             <Route path="vds" element={<VDS />} />
+            <Route path="vds-orders" element={<VdsOrders />} />
             <Route path="servers" element={<Servers />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="invoice/:id" element={<AdminInvoiceDetail />} />
@@ -192,12 +201,6 @@ function App() {
           {/* Customer routes - specific paths to avoid catching "/" */}
           <Route path="/dashboard" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<CustomerDashboard />} />
-          </Route>
-          <Route path="/domain-search" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
-            <Route index element={<DomainSearch />} />
-          </Route>
-          <Route path="/domain-checkout" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
-            <Route index element={<DomainCheckout />} />
           </Route>
           <Route path="/domains" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<MyDomains />} />
@@ -252,6 +255,7 @@ function App() {
           {/* Catch-all redirects to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CookieConsent />
         </CartProvider>
         </CustomerViewProvider>
         </ProductCacheProvider>

@@ -171,13 +171,21 @@ export const createInvoice = async (invoiceData) => {
  */
 export const payInvoice = async (paymentData) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
+    // Refresh session if needed
+    let { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      const { data: refreshed } = await supabase.auth.refreshSession()
+      session = refreshed?.session
+    }
+    if (!session?.access_token) {
+      throw new Error('Oturum bulunamadı. Lütfen yeniden giriş yapın.')
+    }
 
     const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/invoice-pay`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(paymentData),
     })

@@ -34,7 +34,7 @@ export default function DomainPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-950">
       <LandingHeader />
 
       {/* Hero Section with Search */}

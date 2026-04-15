@@ -47,6 +47,7 @@ export const useCheckoutStore = create(
 
       updateItemConfig: (id, config) => set((state) => ({
         configurations: { ...state.configurations, [id]: { ...state.configurations[id], ...config } },
+        currentInvoiceId: null,
       })),
 
       setPromoCode: (code, discount = 0) => set({ promoCode: code, promoDiscount: discount }),

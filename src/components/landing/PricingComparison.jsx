@@ -35,39 +35,39 @@ export default function PricingComparison() {
   const renderCell = (value) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <Check className="h-5 w-5 text-primary mx-auto" />
+        <Check className="h-5 w-5 text-indigo-400 mx-auto" />
       ) : (
-        <span className="text-muted-foreground text-center">-</span>
+        <span className="text-slate-500 text-center">-</span>
       )
     }
-    return <span className="text-sm text-center">{value}</span>
+    return <span className="text-sm text-center text-slate-300">{value}</span>
   }
 
   return (
-    <section className="py-24 bg-muted">
+    <section className="py-24 bg-slate-900">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Compare Features</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Compare Features</h2>
+          <p className="text-slate-400">
             Get into the technical details and see exactly what each plan offers for your development needs.
           </p>
         </div>
 
         {/* Comparison Table */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-4 gap-4 p-6 border-b border-border bg-muted/50">
-            <div className="font-semibold">Features & Resources</div>
-            <div className="text-center font-semibold">Starter</div>
-            <div className="text-center font-semibold text-primary">Professional</div>
-            <div className="text-center font-semibold">Enterprise</div>
+          <div className="grid grid-cols-4 gap-4 p-6 border-b border-slate-800 bg-slate-800/40">
+            <div className="font-semibold text-white">Features & Resources</div>
+            <div className="text-center font-semibold text-slate-300">Starter</div>
+            <div className="text-center font-semibold text-indigo-400">Professional</div>
+            <div className="text-center font-semibold text-slate-300">Enterprise</div>
           </div>
 
           {/* Table Body */}
           {features.map((category, catIndex) => (
             <div key={catIndex}>
-              <div className="px-6 py-3 bg-muted/30 font-semibold text-sm text-muted-foreground">
+              <div className="px-6 py-3 bg-slate-800/30 font-semibold text-sm text-slate-400">
                 {category.category}
               </div>
               {category.items.map((item, itemIndex) => (
@@ -75,12 +75,12 @@ export default function PricingComparison() {
                   key={itemIndex}
                   className={cn(
                     'grid grid-cols-4 gap-4 p-6 items-center',
-                    itemIndex % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                    itemIndex % 2 === 0 ? 'bg-slate-950' : 'bg-slate-900/50'
                   )}
                 >
-                  <div className="text-sm font-medium">{item.name}</div>
+                  <div className="text-sm font-medium text-slate-300">{item.name}</div>
                   <div className="flex justify-center">{renderCell(item.starter)}</div>
-                  <div className="flex justify-center bg-primary/5 -my-6 py-6">
+                  <div className="flex justify-center bg-indigo-500/5 -my-6 py-6">
                     {renderCell(item.professional)}
                   </div>
                   <div className="flex justify-center">{renderCell(item.enterprise)}</div>
@@ -92,9 +92,9 @@ export default function PricingComparison() {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-400">
             Looking for custom infrastructure?{' '}
-            <a href="#footer" className="text-primary hover:underline font-medium">
+            <a href="#footer" className="text-indigo-400 hover:underline font-medium">
               Contact our sales team
             </a>
           </p>

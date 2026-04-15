@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Plus, Pencil, Trash2, AlertCircle, Server, PlayCircle, Pause, Play, XCircle, Users, CheckCircle, XOctagon, Clock, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertCircle, Server, PlayCircle, Pause, Play, XCircle, Users, CheckCircle, XOctagon, Clock, Download, FileDown } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import {
@@ -208,6 +208,64 @@ export default function Hosting() {
     }
   }
 
+  const handleBtkExport = () => {
+    const hostingsWithDomain = hostingRecords?.filter(h => h.domain) || []
+    if (!hostingsWithDomain.length) {
+      toast.error('Dışa aktarılacak barındırılan alan adı bulunamadı')
+      return
+    }
+
+    const formatDateBtk = (dateStr) => {
+      if (!dateStr) return '*'
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return '*'
+      const day = String(d.getDate()).padStart(2, '0')
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const year = d.getFullYear()
+      return `${day}.${month}.${year}`
+    }
+
+    const sanitize = (val) => {
+      if (!val) return '*'
+      return val.toString().replace(/[,;]/g, '-').trim()
+    }
+
+    const customersMap = {}
+    if (customers?.length) {
+      customers.forEach(c => { customersMap[c.id] = c })
+    }
+
+    const lines = hostingsWithDomain.map(pkg => {
+      const customer = customersMap[pkg.customer_id] || pkg.customer
+      const ownerName = sanitize(
+        customer?.company_name || customer?.full_name || customer?.profile?.full_name
+      )
+      const phone = sanitize(customer?.phone || customer?.profile?.phone)
+      const email = sanitize(customer?.email || customer?.profile?.email)
+      const regDate = formatDateBtk(pkg.start_date)
+      const expDate = formatDateBtk(pkg.expiration_date)
+
+      return `${pkg.domain},${ownerName},${phone},${email},${regDate},${expDate}`
+    })
+
+    const csvContent = lines.join('\n')
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const now = new Date()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year = now.getFullYear()
+    link.href = url
+    link.download = `btk-barinilan-alan-adlari-${year}-${month}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+
+    toast.success('BTK CSV dosyası indirildi', {
+      description: `${hostingsWithDomain.length} barındırılan alan adı dışa aktarıldı`
+    })
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -295,6 +353,10 @@ export default function Hosting() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleBtkExport}>
+            <FileDown className="h-4 w-4 mr-2" />
+            BTK CSV
+          </Button>
           <Button variant="outline" onClick={handleOpenSyncDialog}>
             <Download className="h-4 w-4 mr-2" />
             cPanel'den Çek

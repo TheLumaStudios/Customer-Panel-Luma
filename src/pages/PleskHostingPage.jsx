@@ -1,8 +1,7 @@
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Check } from 'lucide-react'
+import { Check, Shield } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useProductCache } from '@/contexts/ProductCacheContext'
 
@@ -13,21 +12,24 @@ export default function PleskHostingPage() {
   const { packages } = useProductCache('plesk_hosting')
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-950">
       <LandingHeader />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-orange-600 via-orange-700 to-amber-700 text-white">
-        <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-          <div className="inline-block mb-4">
-            <span className="bg-white/20 backdrop-blur text-white text-sm font-semibold px-4 py-2 rounded-full">
-              Plesk Kontrol Paneli
-            </span>
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[128px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-amber-500/8 rounded-full blur-[128px]" />
+
+        <div className="relative container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm mb-6">
+            <Shield className="h-4 w-4 text-orange-400" />
+            <span className="text-sm text-slate-300">Plesk Kontrol Paneli</span>
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
             Plesk Web Hosting Paketleri
           </h1>
-          <p className="text-lg md:text-xl text-orange-100 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto">
             Vakit kaybetmeden projenizi hayata geçirmeniz için Plesk kontrol paneli ile
             kolay yönetilebilir hosting paketleri.
           </p>
@@ -38,8 +40,8 @@ export default function PleskHostingPage() {
       <section className="py-16">
         <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Plesk Hosting Paketleri</h2>
-            <p className="text-muted-foreground">Windows ve Linux desteği ile profesyonel hosting</p>
+            <h2 className="text-3xl font-bold text-white mb-4">Plesk Hosting Paketleri</h2>
+            <p className="text-slate-400">Windows ve Linux desteği ile profesyonel hosting</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -48,22 +50,22 @@ export default function PleskHostingPage() {
               const hasDiscount = pkg.price_original && pkg.price_original > pkg.price_monthly
 
               return (
-                <Card
+                <div
                   key={pkg.id}
-                  className={`p-6 flex flex-col ${pkg.is_featured ? 'border-primary shadow-xl ring-2 ring-primary/20' : 'hover:shadow-lg transition-shadow'}`}
+                  className={`p-6 flex flex-col rounded-2xl bg-slate-800/40 border ${pkg.is_featured ? 'border-indigo-500 shadow-xl ring-2 ring-indigo-500/20' : 'border-slate-700/50 hover:border-slate-600 transition-colors'}`}
                 >
                   {pkg.is_featured && (
                     <div className="mb-3">
-                      <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                      <span className="bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                         En Popüler
                       </span>
                     </div>
                   )}
 
-                  <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
+                  <h3 className="text-xl font-bold text-white mb-2">{pkg.name}</h3>
 
                   {/* Disk & Domain Count */}
-                  <div className="flex flex-col gap-1 mb-4 text-sm text-muted-foreground">
+                  <div className="flex flex-col gap-1 mb-4 text-sm text-slate-400">
                     <span>{formatDisk(pkg.disk_gb)} SSD Disk</span>
                     {pkg.domains_allowed && (
                       <span>{pkg.domains_allowed} Adet Alan Adı</span>
@@ -73,17 +75,17 @@ export default function PleskHostingPage() {
                   {/* Price */}
                   <div className="mb-6">
                     {hasDiscount && (
-                      <span className="line-through text-muted-foreground text-sm mr-2">
+                      <span className="line-through text-slate-500 text-sm mr-2">
                         {formatPrice(pkg.price_original)}₺
                       </span>
                     )}
                     <div>
-                      <span className="text-3xl font-bold text-primary">
+                      <span className="text-3xl font-bold text-indigo-400">
                         {formatPrice(pkg.price_monthly)}₺
                       </span>
-                      <span className="text-muted-foreground text-sm">/ay</span>
+                      <span className="text-slate-400 text-sm">/ay</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">Aylık Ödeme</span>
+                    <span className="text-xs text-slate-500">Aylık Ödeme</span>
                   </div>
 
                   {/* Features */}
@@ -91,8 +93,8 @@ export default function PleskHostingPage() {
                     <ul className="space-y-2 mb-6 flex-1">
                       {features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <Check className="h-4 w-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                          <span className="text-sm">{feature}</span>
+                          <Check className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
+                          <span className="text-sm text-slate-300">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -100,12 +102,12 @@ export default function PleskHostingPage() {
 
                   <Button
                     asChild
-                    className="w-full mt-auto"
+                    className={`w-full mt-auto ${pkg.is_featured ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : ''}`}
                     variant={pkg.is_featured ? 'default' : 'outline'}
                   >
                     <Link to="/register">Sipariş Ver</Link>
                   </Button>
-                </Card>
+                </div>
               )
             })}
           </div>

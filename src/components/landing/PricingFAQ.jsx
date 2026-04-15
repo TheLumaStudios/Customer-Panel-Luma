@@ -39,12 +39,12 @@ export default function PricingFAQ() {
   }
 
   return (
-    <section className="py-24 bg-background">
+    <section className="py-24 bg-slate-950">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Billing & Pricing FAQ</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Billing & Pricing FAQ</h2>
+          <p className="text-slate-400">
             Everything you need to know about our plans, billing cycles, and our 30-day money-back guarantee.
           </p>
         </div>
@@ -54,7 +54,7 @@ export default function PricingFAQ() {
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary transition-colors"
+              className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-indigo-500/30 transition-colors"
             >
               <button
                 onClick={() => toggleFAQ(index)}
@@ -62,26 +62,26 @@ export default function PricingFAQ() {
               >
                 <div className="flex items-center gap-3">
                   {faq.icon && (
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Headphones className="h-5 w-5 text-primary" />
+                    <div className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <Headphones className="h-5 w-5 text-indigo-400" />
                     </div>
                   )}
-                  <span className="font-semibold text-lg">{faq.question}</span>
+                  <span className="font-semibold text-lg text-white">{faq.question}</span>
                 </div>
                 <ChevronDown
                   className={cn(
-                    'h-5 w-5 text-muted-foreground transition-transform flex-shrink-0',
+                    'h-5 w-5 text-slate-400 transition-transform flex-shrink-0',
                     openIndex === index && 'rotate-180'
                   )}
                 />
               </button>
               {openIndex === index && (
                 <div className="px-6 pb-6 pt-0">
-                  <p className="text-muted-foreground leading-relaxed mb-4">{faq.answer}</p>
+                  <p className="text-slate-400 leading-relaxed mb-4">{faq.answer}</p>
                   {faq.cta && (
                     <a
                       href="#footer"
-                      className="inline-block text-primary hover:underline font-medium"
+                      className="inline-block text-indigo-400 hover:underline font-medium"
                     >
                       {faq.cta}
                     </a>

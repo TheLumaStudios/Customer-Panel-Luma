@@ -7,7 +7,7 @@ import ContactFAQ from '@/components/landing/ContactFAQ'
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-950">
       <LandingHeader />
       <main>
         <ContactHero />

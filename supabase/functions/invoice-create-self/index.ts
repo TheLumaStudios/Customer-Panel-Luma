@@ -21,7 +21,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ALLOWED_TYPES = new Set(['hosting', 'vds', 'domain', 'wallet_topup'])
+const ALLOWED_TYPES = new Set(['hosting', 'vds', 'domain', 'wallet_topup', 'addon'])
 const BILLING_PERIODS = new Set(['monthly', 'quarterly', 'semi_annual', 'annual'])
 
 const PERIOD_LABEL: Record<string, string> = {
@@ -134,8 +134,8 @@ serve(async (req) => {
     if (rawItems.length === 0) {
       return json({ success: false, error: 'items is required' }, 400)
     }
-    if (rawItems.length > 10) {
-      return json({ success: false, error: 'max 10 items per invoice' }, 400)
+    if (rawItems.length > 30) {
+      return json({ success: false, error: 'max 30 items per invoice' }, 400)
     }
 
     // --- Build validated invoice items (server-side re-pricing) ---
@@ -192,6 +192,23 @@ serve(async (req) => {
           unit_price: clientPrice,
           amount: clientPrice * quantity,
           service_type: 'domain',
+        })
+        continue
+      }
+
+      // addon → client-provided price (extras like disk, IP, backup)
+      if (type === 'addon') {
+        const addonPrice = parseFloat(raw.unit_price) || 0
+        if (addonPrice < 0 || addonPrice > 5000) {
+          return json({ success: false, error: 'addon price out of range' }, 400)
+        }
+        validatedItems.push({
+          type: 'addon',
+          description: raw.description || 'Ek Hizmet',
+          quantity,
+          unit_price: addonPrice,
+          amount: addonPrice * quantity,
+          service_type: 'addon',
         })
         continue
       }

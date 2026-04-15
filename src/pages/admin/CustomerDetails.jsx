@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCustomer, useUpdateCustomer } from '@/hooks/useCustomers'
 import { useDomains } from '@/hooks/useDomains'
@@ -26,7 +26,12 @@ import {
   Key,
   Send,
   Eye,
-  FolderOpen
+  FolderOpen,
+  ShieldAlert,
+  ShieldCheck,
+  Send as SendIcon,
+  X,
+  ZoomIn
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -37,7 +42,14 @@ import { BrandingSettings } from '@/components/shared/BrandingSettings'
 import CustomerForm from '@/components/customers/CustomerForm'
 import SendPasswordModal from '@/components/customers/SendPasswordModal'
 import { prepareCustomerAuth, sendPasswordSMS } from '@/lib/api/auth'
+import { sendSMS } from '@/lib/api/sms'
 import { supabase } from '@/lib/supabase'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function CustomerDetails() {
   const { id } = useParams()
@@ -45,6 +57,8 @@ export default function CustomerDetails() {
   const [formOpen, setFormOpen] = useState(false)
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [passwordData, setPasswordData] = useState(null)
+  const [kycImagePreview, setKycImagePreview] = useState(null)
+  const [kycReminderSending, setKycReminderSending] = useState(false)
   const updateCustomer = useUpdateCustomer()
 
   const { data: customer, isLoading: customerLoading } = useCustomer(id)
@@ -173,6 +187,31 @@ export default function CustomerDetails() {
     }
   }
 
+  const handleSendKycReminder = async () => {
+    if (!customer.phone) {
+      toast.error('Telefon numarası bulunamadı', {
+        description: 'Müşterinin telefon numarası olmadan SMS gönderilemez'
+      })
+      return
+    }
+
+    setKycReminderSending(true)
+    try {
+      const message = `Sayın ${customer.full_name || 'Müşterimiz'}, 5651 sayılı Kanun kapsamında BTK (Bilgi Teknolojileri ve İletişim Kurumu) tarafından yer sağlayıcılardan talep edilen kimlik doğrulama yükümlülüğü gereğince, kimlik bilgilerinizi sisteme yüklemeniz zorunludur. Lütfen panele giriş yaparak kimlik kartınızın ön ve arka yüzünü yükleyiniz.`
+      await sendSMS(customer.phone, message)
+      toast.success('Hatırlatma SMS gönderildi', {
+        description: `${customer.phone} numarasına kimlik doğrulama hatırlatması gönderildi`
+      })
+    } catch (error) {
+      console.error('KYC hatırlatma SMS hatası:', error)
+      toast.error('SMS gönderilemedi', {
+        description: error.message
+      })
+    } finally {
+      setKycReminderSending(false)
+    }
+  }
+
   const handleSubmit = async (data) => {
     try {
       // Update customers table with all fields (including profile fields)
@@ -283,32 +322,66 @@ export default function CustomerDetails() {
         </CardContent>
       </Card>
 
-      {/* ID Card Images */}
-      {(customer.id_card_front_url || customer.id_card_back_url) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Kimlik Kartı</CardTitle>
-            <CardDescription>
-              Müşteri tarafından yüklenmiş kimlik belgesi
-              {customer.id_card_uploaded_at && (
-                <> · {formatDate(customer.id_card_uploaded_at)}</>
+      {/* Kimlik Doğrulama */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {customer.id_card_front_url && customer.id_card_back_url ? (
+                <ShieldCheck className="h-5 w-5 text-green-500" />
+              ) : (
+                <ShieldAlert className="h-5 w-5 text-amber-500" />
               )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+              <div>
+                <CardTitle className="text-lg">Kimlik Doğrulama</CardTitle>
+                <CardDescription>
+                  {customer.id_card_front_url && customer.id_card_back_url ? (
+                    <>
+                      Kimlik doğrulaması tamamlandı
+                      {customer.id_card_uploaded_at && (
+                        <> · {formatDate(customer.id_card_uploaded_at)}</>
+                      )}
+                    </>
+                  ) : (
+                    'Müşteri henüz kimlik belgesi yüklememiş'
+                  )}
+                </CardDescription>
+              </div>
+            </div>
+            {!(customer.id_card_front_url && customer.id_card_back_url) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendKycReminder}
+                disabled={kycReminderSending}
+              >
+                <SendIcon className="h-4 w-4 mr-2" />
+                {kycReminderSending ? 'Gönderiliyor...' : 'Hatırlatma SMS Gönder'}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {customer.id_card_front_url || customer.id_card_back_url ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Ön Yüz</div>
                 {customer.id_card_front_url ? (
-                  <a href={customer.id_card_front_url} target="_blank" rel="noreferrer">
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={() => setKycImagePreview({ url: customer.id_card_front_url, title: 'Kimlik Ön Yüz' })}
+                  >
                     <img
                       src={customer.id_card_front_url}
                       alt="Kimlik ön yüz"
                       className="w-full max-h-64 object-contain rounded border bg-muted"
                     />
-                  </a>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <ZoomIn className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
                 ) : (
-                  <div className="h-40 rounded border bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="h-40 rounded border border-dashed bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
                     Yüklenmedi
                   </div>
                 )}
@@ -316,23 +389,39 @@ export default function CustomerDetails() {
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Arka Yüz</div>
                 {customer.id_card_back_url ? (
-                  <a href={customer.id_card_back_url} target="_blank" rel="noreferrer">
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={() => setKycImagePreview({ url: customer.id_card_back_url, title: 'Kimlik Arka Yüz' })}
+                  >
                     <img
                       src={customer.id_card_back_url}
                       alt="Kimlik arka yüz"
                       className="w-full max-h-64 object-contain rounded border bg-muted"
                     />
-                  </a>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <ZoomIn className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
                 ) : (
-                  <div className="h-40 rounded border bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="h-40 rounded border border-dashed bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
                     Yüklenmedi
                   </div>
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <ShieldAlert className="h-12 w-12 text-amber-400 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                Kimlik belgesi henüz yüklenmemiş
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Müşteriye hatırlatma SMS göndererek kimlik doğrulama sürecini başlatabilirsiniz
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -727,6 +816,24 @@ export default function CustomerDetails() {
           </Card>
         </div>
       </div>
+
+      {/* Kimlik Resmi Önizleme Dialog */}
+      <Dialog open={!!kycImagePreview} onOpenChange={() => setKycImagePreview(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{kycImagePreview?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center">
+            {kycImagePreview?.url && (
+              <img
+                src={kycImagePreview.url}
+                alt={kycImagePreview.title}
+                className="max-w-full max-h-[70vh] object-contain rounded"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CustomerForm
         open={formOpen}

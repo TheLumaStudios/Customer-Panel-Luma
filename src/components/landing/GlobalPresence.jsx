@@ -30,17 +30,17 @@ export default function GlobalPresence() {
   ]
 
   return (
-    <section className="py-24 bg-muted">
+    <section className="py-24 bg-slate-900">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">Global Presence</h2>
-            <p className="text-muted-foreground max-w-2xl">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Global Presence</h2>
+            <p className="text-slate-400 max-w-2xl">
               Visit one of our innovation hubs across the world. We combine global reach with local expertise to keep you connected.
             </p>
           </div>
-          <Button variant="outline">View All Locations</Button>
+          <Button variant="outline" className="border-slate-700 text-slate-300 hover:border-indigo-500/30">View All Locations</Button>
         </div>
 
         {/* Office Cards */}
@@ -48,7 +48,7 @@ export default function GlobalPresence() {
           {offices.map((office, index) => (
             <div
               key={index}
-              className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all group"
+              className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-indigo-500/30 hover:shadow-lg transition-all group"
             >
               {/* Image */}
               <div className="relative h-48 overflow-hidden">
@@ -58,7 +58,7 @@ export default function GlobalPresence() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute top-4 left-4">
-                  <div className="bg-white px-3 py-1 rounded-full text-xs font-semibold">
+                  <div className="bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-white">
                     {office.badge}
                   </div>
                 </div>
@@ -66,19 +66,19 @@ export default function GlobalPresence() {
 
               {/* Content */}
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-1">{office.city}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{office.country}</p>
+                <h3 className="text-xl font-bold text-white mb-1">{office.city}</h3>
+                <p className="text-sm text-slate-400 mb-4">{office.country}</p>
 
                 <div className="space-y-3">
                   <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{office.address}</span>
+                    <MapPin className="h-4 w-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-slate-400">{office.address}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                    <Phone className="h-4 w-4 text-indigo-400 flex-shrink-0" />
                     <a
                       href={`tel:${office.phone}`}
-                      className="text-primary hover:underline font-medium"
+                      className="text-indigo-400 hover:underline font-medium"
                     >
                       {office.phone}
                     </a>

@@ -79,18 +79,18 @@ export default function PricingCards() {
   ]
 
   return (
-    <section className="py-12 bg-background">
+    <section className="py-12 bg-slate-950">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Billing Toggle */}
         <div className="flex flex-col items-center mb-12">
-          <div className="inline-flex items-center gap-3 bg-muted p-1 rounded-lg mb-4">
+          <div className="inline-flex items-center gap-3 bg-slate-800/40 p-1 rounded-lg mb-4">
             <button
               onClick={() => setBillingPeriod('monthly')}
               className={cn(
                 'px-6 py-2 rounded-md text-sm font-medium transition-all',
                 billingPeriod === 'monthly'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-slate-900 shadow-sm text-white'
+                  : 'text-slate-400 hover:text-white'
               )}
             >
               Monthly
@@ -100,15 +100,15 @@ export default function PricingCards() {
               className={cn(
                 'px-6 py-2 rounded-md text-sm font-medium transition-all',
                 billingPeriod === 'yearly'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-slate-900 shadow-sm text-white'
+                  : 'text-slate-400 hover:text-white'
               )}
             >
               Yearly
             </button>
           </div>
           {billingPeriod === 'yearly' && (
-            <p className="text-sm text-primary font-semibold">Save 30% on annual</p>
+            <p className="text-sm text-indigo-400 font-semibold">Save 30% on annual</p>
           )}
         </div>
 
@@ -118,16 +118,16 @@ export default function PricingCards() {
             <div
               key={index}
               className={cn(
-                'relative bg-card border rounded-2xl p-8 transition-all',
+                'relative bg-slate-900 border rounded-2xl p-8 transition-all',
                 plan.featured
-                  ? 'border-primary shadow-2xl scale-105'
-                  : 'border-border hover:border-primary hover:shadow-lg'
+                  ? 'border-indigo-500 shadow-2xl scale-105'
+                  : 'border-slate-800 hover:border-indigo-500/30 hover:shadow-lg'
               )}
             >
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                  <Badge className="bg-indigo-600 text-white px-4 py-1">
                     {plan.badge}
                   </Badge>
                 </div>
@@ -135,13 +135,13 @@ export default function PricingCards() {
 
               {/* Plan Header */}
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
+                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                <p className="text-sm text-slate-400 mb-6">{plan.description}</p>
                 <div className="mb-1">
-                  <span className="text-5xl font-bold">
+                  <span className="text-5xl font-bold text-white">
                     ${billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice.toFixed(2)}
                   </span>
-                  <span className="text-muted-foreground ml-2">/mo</span>
+                  <span className="text-slate-400 ml-2">/mo</span>
                 </div>
               </div>
 
@@ -149,15 +149,20 @@ export default function PricingCards() {
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
+                    <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-slate-300">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               {/* CTA Button */}
               <Button
-                className="w-full"
+                className={cn(
+                  'w-full',
+                  plan.featured
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    : 'border-slate-700 text-slate-300 hover:border-indigo-500/30'
+                )}
                 variant={plan.featured ? 'default' : 'outline'}
                 size="lg"
                 asChild
@@ -174,10 +179,10 @@ export default function PricingCards() {
             const Icon = badge.icon
             return (
               <div key={index} className="flex items-center gap-3 justify-center">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-primary" />
+                <div className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-indigo-400" />
                 </div>
-                <div className="text-sm font-semibold">{badge.title}</div>
+                <div className="text-sm font-semibold text-slate-300">{badge.title}</div>
               </div>
             )
           })}

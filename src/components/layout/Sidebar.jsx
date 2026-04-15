@@ -40,6 +40,7 @@ const adminMenuItems = [
   { name: 'Hosting Paketleri', path: '/admin/hosting-packages', icon: Package },
   { name: 'Ürün Paketleri', path: '/admin/product-packages', icon: Package },
   { name: 'VDS / VPS', path: '/admin/vds', icon: Monitor },
+  { name: 'VDS Siparişleri', path: '/admin/vds-orders', icon: Package },
   { name: 'Sunucular', path: '/admin/servers', icon: HardDrive },
   { name: 'Faturalar', path: '/admin/invoices', icon: FileText },
   { name: 'Sözleşmeler', path: '/admin/contracts', icon: FileSignature },

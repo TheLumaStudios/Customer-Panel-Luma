@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useInvoice, useUploadInvoiceFile, useDeleteInvoiceFile, useUploadTaxReceipt, useDeleteTaxReceipt } from '@/hooks/useInvoices'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +23,116 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+
+const tr = (text) => {
+  if (!text) return ''
+  return String(text)
+    .replace(/ş/g, 's').replace(/Ş/g, 'S')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+    .replace(/ı/g, 'i').replace(/İ/g, 'I')
+}
+
+const generateInvoicePdf = (invoice) => {
+  const doc = new jsPDF()
+  const pw = doc.internal.pageSize.getWidth()
+
+  doc.setFillColor(30, 41, 59)
+  doc.rect(0, 0, pw, 42, 'F')
+
+  doc.setTextColor(255)
+  doc.setFontSize(22)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PROFORMA FATURA', 14, 20)
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(180)
+  doc.text('Luma Yazilim - Enes POYRAZ', 14, 28)
+  doc.text('VKN: 7330923351 | Ucevler Mah. Dumlupinar Cd. No:5/A Nilufer/Bursa', 14, 33)
+  doc.text('Tel: 0544 979 62 57 | info@lumayazilim.com', 14, 38)
+
+  doc.setTextColor(255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text(invoice.invoice_number || '', pw - 14, 20, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(180)
+  doc.text(`Tarih: ${invoice.invoice_date || ''}`, pw - 14, 28, { align: 'right' })
+  doc.text(`Vade: ${invoice.due_date || ''}`, pw - 14, 33, { align: 'right' })
+  const statusText = invoice.status === 'paid' ? 'ODENMIS' : invoice.status === 'unpaid' ? 'ODENMEDI' : (invoice.status || '').toUpperCase()
+  doc.text(`Durum: ${statusText}`, pw - 14, 38, { align: 'right' })
+
+  doc.setTextColor(0)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.text(tr('Musteri Bilgileri'), 14, 54)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(80)
+  const cust = invoice.customer || {}
+  doc.text(tr(cust.full_name || '-'), 14, 60)
+  doc.text(cust.email || '-', 14, 65)
+  if (cust.phone) doc.text(`Tel: ${cust.phone}`, 14, 70)
+
+  const rawItems = invoice.invoice_items || invoice.items || []
+  const tableBody = rawItems.map(item => [
+    tr(item.description || item.type || '-'),
+    String(item.quantity || 1),
+    `${Number(item.unit_price || item.amount || 0).toFixed(2)} TL`,
+    `${Number(item.amount || item.total_price || item.total || 0).toFixed(2)} TL`,
+  ])
+  if (tableBody.length === 0) tableBody.push([tr('Fatura kalemi bulunamadi'), '-', '-', '-'])
+
+  const startY = cust.phone ? 78 : 74
+  doc.autoTable({
+    startY,
+    head: [[tr('Aciklama'), 'Adet', 'Birim Fiyat', 'Tutar']],
+    body: tableBody,
+    theme: 'striped',
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 20, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' }, 3: { cellWidth: 35, halign: 'right' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  const finalY = doc.lastAutoTable.finalY + 8
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text('Ara Toplam:', pw - 69, finalY)
+  doc.text(`${Number(invoice.subtotal || 0).toFixed(2)} TL`, pw - 14, finalY, { align: 'right' })
+  doc.text('KDV (%20):', pw - 69, finalY + 6)
+  doc.text(`${Number(invoice.tax || invoice.tax_amount || 0).toFixed(2)} TL`, pw - 14, finalY + 6, { align: 'right' })
+  doc.setDrawColor(200)
+  doc.line(pw - 75, finalY + 10, pw - 14, finalY + 10)
+  doc.setFontSize(12)
+  doc.setTextColor(0)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TOPLAM:', pw - 69, finalY + 18)
+  doc.text(`${Number(invoice.total_amount || invoice.total || 0).toFixed(2)} TL`, pw - 14, finalY + 18, { align: 'right' })
+
+  if (invoice.payment_method) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120)
+    doc.text(tr(`Odeme Yontemi: ${invoice.payment_method}`), 14, finalY + 18)
+  }
+
+  doc.setFontSize(7)
+  doc.setTextColor(150)
+  doc.setFont('helvetica', 'italic')
+  doc.text('Bu belge proforma fatura niteligindedir, resmi fatura yerine gecmez.', pw / 2, 275, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.text('Luma Yazilim | lumayazilim.com | info@lumayazilim.com', pw / 2, 280, { align: 'center' })
+
+  doc.save(`${invoice.invoice_number || 'fatura'}.pdf`)
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams()
@@ -40,6 +151,21 @@ export default function InvoiceDetail() {
   }
 
   const { data: invoice, isLoading, error } = useInvoice(id)
+  const [bankTransferInfo, setBankTransferInfo] = useState(null)
+
+  useEffect(() => {
+    if (!id) return
+    ;(async () => {
+      const { data } = await supabase
+        .from('bank_transfer_confirmations')
+        .select('*')
+        .eq('invoice_id', id)
+        .in('status', ['pending', 'approved'])
+        .limit(1)
+      if (data?.length > 0) setBankTransferInfo(data[0])
+    })()
+  }, [id])
+
   const uploadFile = useUploadInvoiceFile()
   const deleteFile = useDeleteInvoiceFile()
   const uploadTaxReceipt = useUploadTaxReceipt()
@@ -209,6 +335,18 @@ export default function InvoiceDetail() {
   }
 
   const getStatusBadge = (status) => {
+    if (status === 'unpaid' && bankTransferInfo) {
+      return (
+        <div className="space-y-1">
+          <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-200">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Bildirim Yapıldı
+          </Badge>
+          <p className="text-xs text-muted-foreground">{bankTransferInfo.bank_name} - {bankTransferInfo.sender_name}</p>
+        </div>
+      )
+    }
+
     const config = {
       paid: { label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle2 },
       unpaid: { label: 'Ödenmedi', className: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
@@ -241,7 +379,7 @@ export default function InvoiceDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => generateInvoicePdf(invoice)}>
             <Download className="h-4 w-4 mr-2" />
             PDF İndir
           </Button>

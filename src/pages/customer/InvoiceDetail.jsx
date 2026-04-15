@@ -33,10 +33,148 @@ import {
   Wallet,
   XCircle,
   Loader2,
+  Clock,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import BankTransferForm from '@/components/invoices/BankTransferForm'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+
+// Turkce karakter donusumu (Helvetica Turkce desteklemez)
+const tr = (text) => {
+  if (!text) return ''
+  return String(text)
+    .replace(/ş/g, 's').replace(/Ş/g, 'S')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+    .replace(/ı/g, 'i').replace(/İ/g, 'I')
+}
+
+const generateInvoicePdf = (invoice) => {
+  const doc = new jsPDF()
+  const pw = doc.internal.pageSize.getWidth()
+
+  // -- PROFORMA FATURA HEADER --
+  doc.setFillColor(30, 41, 59)
+  doc.rect(0, 0, pw, 42, 'F')
+
+  doc.setTextColor(255)
+  doc.setFontSize(22)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PROFORMA FATURA', 14, 20)
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(180)
+  doc.text('Luma Yazilim - Enes POYRAZ', 14, 28)
+  doc.text('VKN: 7330923351 | Ucevler Mah. Dumlupinar Cd. No:5/A Nilufer/Bursa', 14, 33)
+  doc.text('Tel: 0544 979 62 57 | info@lumayazilim.com', 14, 38)
+
+  // Invoice number - right
+  doc.setTextColor(255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text(invoice.invoice_number || '', pw - 14, 20, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(180)
+  doc.text(`Tarih: ${invoice.invoice_date || ''}`, pw - 14, 28, { align: 'right' })
+  doc.text(`Vade: ${invoice.due_date || ''}`, pw - 14, 33, { align: 'right' })
+
+  const statusText = invoice.status === 'paid' ? 'ODENMIS' : invoice.status === 'unpaid' ? 'ODENMEDI' : (invoice.status || '').toUpperCase()
+  doc.text(`Durum: ${statusText}`, pw - 14, 38, { align: 'right' })
+
+  // -- CUSTOMER INFO --
+  doc.setTextColor(0)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.text(tr('Musteri Bilgileri'), 14, 54)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(80)
+
+  const cust = invoice.customer || {}
+  doc.text(tr(cust.full_name || '-'), 14, 60)
+  doc.text(cust.email || '-', 14, 65)
+  if (cust.phone) doc.text(`Tel: ${cust.phone}`, 14, 70)
+  if (cust.billing_address) doc.text(tr(cust.billing_address), 14, 75)
+
+  // -- ITEMS TABLE --
+  // invoice_items veya items
+  const rawItems = invoice.invoice_items || invoice.items || []
+  const tableBody = rawItems.map(item => [
+    tr(item.description || item.type || '-'),
+    String(item.quantity || 1),
+    `${Number(item.unit_price || item.amount || 0).toFixed(2)} TL`,
+    `${Number(item.amount || item.total_price || item.total || 0).toFixed(2)} TL`,
+  ])
+
+  // Eger tablo bossa placeholder ekle
+  if (tableBody.length === 0) {
+    tableBody.push([tr('Fatura kalemi bulunamadi'), '–', '–', '–'])
+  }
+
+  const startY = cust.billing_address ? 82 : cust.phone ? 78 : 74
+
+  doc.autoTable({
+    startY,
+    head: [[tr('Aciklama'), 'Adet', 'Birim Fiyat', 'Tutar']],
+    body: tableBody,
+    theme: 'striped',
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 9, font: 'helvetica' },
+    bodyStyles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    columnStyles: {
+      0: { cellWidth: 90 },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 35, halign: 'right' },
+      3: { cellWidth: 35, halign: 'right' },
+    },
+    margin: { left: 14, right: 14 },
+  })
+
+  // -- TOTALS --
+  const finalY = doc.lastAutoTable.finalY + 8
+  const rightCol = pw - 14
+
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text('Ara Toplam:', rightCol - 55, finalY)
+  doc.text(`${Number(invoice.subtotal || 0).toFixed(2)} TL`, rightCol, finalY, { align: 'right' })
+
+  doc.text('KDV (%20):', rightCol - 55, finalY + 6)
+  doc.text(`${Number(invoice.tax || invoice.tax_amount || 0).toFixed(2)} TL`, rightCol, finalY + 6, { align: 'right' })
+
+  doc.setDrawColor(200)
+  doc.line(rightCol - 65, finalY + 10, rightCol, finalY + 10)
+
+  doc.setFontSize(12)
+  doc.setTextColor(0)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TOPLAM:', rightCol - 55, finalY + 18)
+  doc.text(`${Number(invoice.total_amount || invoice.total || 0).toFixed(2)} TL`, rightCol, finalY + 18, { align: 'right' })
+
+  // Payment method
+  if (invoice.payment_method) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120)
+    doc.text(tr(`Odeme Yontemi: ${invoice.payment_method}`), 14, finalY + 18)
+  }
+
+  // -- PROFORMA NOTE --
+  doc.setFontSize(7)
+  doc.setTextColor(150)
+  doc.setFont('helvetica', 'italic')
+  doc.text('Bu belge proforma fatura niteligindedir, resmi fatura yerine gecmez.', pw / 2, 275, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.text('Luma Yazilim | lumayazilim.com | info@lumayazilim.com', pw / 2, 280, { align: 'center' })
+
+  doc.save(`${invoice.invoice_number || 'fatura'}.pdf`)
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams()
@@ -50,6 +188,7 @@ export default function InvoiceDetail() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [existingCancelTicket, setExistingCancelTicket] = useState(null)
+  const [hasBankTransfer, setHasBankTransfer] = useState(false)
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: credit } = useCustomerCredit(user?.id)
@@ -79,6 +218,24 @@ export default function InvoiceDetail() {
     })()
     return () => { cancelled = true }
   }, [currentCustomer?.id, invoice?.invoice_number])
+
+  // Check if bank transfer confirmation exists for this invoice
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('bank_transfer_confirmations')
+        .select('id, status')
+        .eq('invoice_id', id)
+        .in('status', ['pending', 'approved'])
+        .limit(1)
+      if (!cancelled && data?.length > 0) {
+        setHasBankTransfer(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [id, bankTransferOpen])
 
   const handlePayInvoice = async (paymentMethod) => {
     try {
@@ -241,14 +398,23 @@ export default function InvoiceDetail() {
         <div className="flex items-center gap-2">
           {invoice.status === 'unpaid' && (
             <>
-              <Button onClick={() => setPaymentModalOpen(true)}>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Ödeme Yap
-              </Button>
-              <Button variant="outline" onClick={() => setBankTransferOpen(true)}>
-                <DollarSign className="h-4 w-4 mr-2" />
-                Havale/EFT ile Öde
-              </Button>
+              {hasBankTransfer ? (
+                <Badge className="bg-amber-100 text-amber-800 border-amber-200 px-3 py-1.5 text-sm">
+                  <Clock className="h-4 w-4 mr-1.5" />
+                  Havale bildirimi gönderildi - İnceleme bekleniyor
+                </Badge>
+              ) : (
+                <>
+                  <Button onClick={() => setPaymentModalOpen(true)}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Ödeme Yap
+                  </Button>
+                  <Button variant="outline" onClick={() => setBankTransferOpen(true)}>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Havale/EFT ile Öde
+                  </Button>
+                </>
+              )}
               {existingCancelTicket ? (
                 <Button
                   variant="outline"
@@ -271,7 +437,7 @@ export default function InvoiceDetail() {
               )}
             </>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => generateInvoicePdf(invoice)}>
             <Download className="h-4 w-4 mr-2" />
             PDF İndir
           </Button>
@@ -439,11 +605,17 @@ export default function InvoiceDetail() {
                 )}
               </div>
 
-              {invoice.status === 'unpaid' && (
+              {invoice.status === 'unpaid' && !hasBankTransfer && (
                 <Button className="w-full" onClick={() => setPaymentModalOpen(true)}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   Şimdi Öde
                 </Button>
+              )}
+              {invoice.status === 'unpaid' && hasBankTransfer && (
+                <div className="text-center text-sm text-amber-600 bg-amber-50 rounded-lg p-3">
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Havale bildirimi inceleniyor
+                </div>
               )}
             </CardContent>
           </Card>
@@ -475,7 +647,7 @@ export default function InvoiceDetail() {
               <CardTitle className="text-lg">İşlemler</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => generateInvoicePdf(invoice)}>
                 <Download className="h-4 w-4 mr-2" />
                 PDF İndir
               </Button>
@@ -575,6 +747,8 @@ export default function InvoiceDetail() {
           </DialogHeader>
           <BankTransferForm
             invoiceId={invoice.id}
+            invoiceNumber={invoice.invoice_number}
+            invoiceTotal={invoice.total_amount || invoice.total}
             onSuccess={() => {
               setBankTransferOpen(false)
               toast.success('Havale bildirimi gönderildi', {

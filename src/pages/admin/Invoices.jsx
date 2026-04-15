@@ -89,6 +89,21 @@ export default function Invoices() {
   const deleteInvoice = useDeleteInvoice()
   const updateInvoice = useUpdateInvoice()
 
+  // Fetch bank transfer confirmations
+  const { data: bankTransfers } = useQuery({
+    queryKey: ['bank-transfer-confirmations'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bank_transfer_confirmations')
+        .select('id, invoice_id, bank_name, sender_name, amount, status, created_at')
+        .eq('status', 'pending')
+      return data || []
+    },
+  })
+
+  const bankTransferMap = {}
+  bankTransfers?.forEach(bt => { bankTransferMap[bt.invoice_id] = bt })
+
   const invoices = invoicesData?.invoices || []
   const total = invoicesData?.total || 0
 
@@ -319,7 +334,20 @@ export default function Invoices() {
     )
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, invoiceId) => {
+    // Havale bildirimi varsa özel badge göster
+    const bt = bankTransferMap[invoiceId]
+    if (status === 'unpaid' && bt) {
+      return (
+        <div className="space-y-1">
+          <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-200">
+            Bildirim Yapıldı
+          </Badge>
+          <div className="text-[10px] text-muted-foreground">{bt.bank_name} - {bt.sender_name}</div>
+        </div>
+      )
+    }
+
     const config = {
       paid: { label: 'Ödendi', className: 'bg-green-100 text-green-800 border-green-200' },
       unpaid: { label: 'Ödenmedi', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
@@ -556,7 +584,7 @@ export default function Invoices() {
                     <TableCell className="text-right font-semibold">
                       {formatCurrency(getInvoiceTotal(invoice), invoice.currency)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    <TableCell>{getStatusBadge(invoice.status, invoice.id)}</TableCell>
                     <TableCell>
                       {invoice.invoice_type === 'mukerrer_20b' ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
@@ -622,51 +650,59 @@ export default function Invoices() {
 
       {/* Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Faturayı Öde</DialogTitle>
             <DialogDescription>
               {selectedInvoice?.invoice_number} numaralı faturayı nasıl ödemek istersiniz?
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-muted p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Ödenecek Tutar:</span>
-                <span className="text-2xl font-bold">
-                  {selectedInvoice && formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
-                </span>
-              </div>
+          <div className="rounded-lg bg-muted p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Ödenecek Tutar:</span>
+              <span className="text-2xl font-bold">
+                {selectedInvoice && formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
+              </span>
             </div>
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+
+          {selectedInvoice && bankTransferMap[selectedInvoice.id] && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-indigo-800 mb-1">Havale Bildirimi Mevcut</p>
+              <p className="text-xs text-indigo-600">
+                {bankTransferMap[selectedInvoice.id].bank_name} - {bankTransferMap[selectedInvoice.id].sender_name}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => handlePayInvoice('bank_transfer')}
+              disabled={payInvoice.isPending}
+              className="w-full justify-start h-11"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Manuel Ödeme Onayla (Havale/EFT)
+            </Button>
             <Button
               variant="outline"
               onClick={() => handlePayInvoice('wallet')}
               disabled={payInvoice.isPending}
-              className="w-full sm:w-auto"
+              className="w-full justify-start h-11"
             >
               <Wallet className="h-4 w-4 mr-2" />
               Wallet ile Öde
             </Button>
             <Button
-              variant="default"
+              variant="outline"
               onClick={() => handlePayInvoice('iyzico')}
               disabled={payInvoice.isPending}
-              className="w-full sm:w-auto bg-[#00A6FF] hover:bg-[#0088CC]"
+              className="w-full justify-start h-11"
             >
               <CreditCard className="h-4 w-4 mr-2" />
               Kredi Kartı (iyzico)
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => handlePayInvoice('bank_transfer')}
-              disabled={payInvoice.isPending}
-              className="w-full sm:w-auto"
-            >
-              Manuel Ödeme İşaretle
-            </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
