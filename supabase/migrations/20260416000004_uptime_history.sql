@@ -1,14 +1,23 @@
 -- Public Uptime/Status Sayfası
 
 -- uptime_checks tablosu
-CREATE TABLE IF NOT EXISTS uptime_checks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  server_id UUID NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('up', 'down', 'degraded')),
-  response_time_ms INTEGER,
-  check_location TEXT DEFAULT 'eu-west',
-  checked_at TIMESTAMPTZ DEFAULT now()
-);
+DO $$ BEGIN
+  CREATE TABLE IF NOT EXISTS uptime_checks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    server_id UUID,
+    status TEXT,
+    response_time_ms INTEGER,
+    check_location TEXT DEFAULT 'eu-west',
+    checked_at TIMESTAMPTZ DEFAULT now()
+  );
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+-- Eksik kolonları güvenli ekle
+ALTER TABLE uptime_checks ADD COLUMN IF NOT EXISTS server_id UUID;
+ALTER TABLE uptime_checks ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE uptime_checks ADD COLUMN IF NOT EXISTS response_time_ms INTEGER;
+ALTER TABLE uptime_checks ADD COLUMN IF NOT EXISTS check_location TEXT DEFAULT 'eu-west';
+ALTER TABLE uptime_checks ADD COLUMN IF NOT EXISTS checked_at TIMESTAMPTZ DEFAULT now();
 
 -- incidents tablosu
 CREATE TABLE IF NOT EXISTS incidents (
@@ -44,18 +53,25 @@ ALTER TABLE uptime_checks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE incidents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE incident_updates ENABLE ROW LEVEL SECURITY;
 
--- Public read
+-- Public read (drop + create to avoid conflict)
+DROP POLICY IF EXISTS "public_read_uptime" ON uptime_checks;
 CREATE POLICY "public_read_uptime" ON uptime_checks FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_incidents" ON incidents;
 CREATE POLICY "public_read_incidents" ON incidents FOR SELECT USING (true);
+DROP POLICY IF EXISTS "public_read_incident_updates" ON incident_updates;
 CREATE POLICY "public_read_incident_updates" ON incident_updates FOR SELECT USING (true);
 
 -- Admin write
+DROP POLICY IF EXISTS "admin_write_uptime" ON uptime_checks;
 CREATE POLICY "admin_write_uptime" ON uptime_checks FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+DROP POLICY IF EXISTS "admin_write_incidents" ON incidents;
 CREATE POLICY "admin_write_incidents" ON incidents FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+DROP POLICY IF EXISTS "admin_write_incident_updates" ON incident_updates;
 CREATE POLICY "admin_write_incident_updates" ON incident_updates FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Service role insert for cron
+DROP POLICY IF EXISTS "service_insert_uptime" ON uptime_checks;
 CREATE POLICY "service_insert_uptime" ON uptime_checks FOR INSERT WITH CHECK (true);
