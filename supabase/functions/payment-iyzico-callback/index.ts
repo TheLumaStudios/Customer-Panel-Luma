@@ -99,8 +99,8 @@ serve(async (req) => {
 
     // Frontend redirect base (falls back to relative paths)
     const APP_URL = Deno.env.get('PUBLIC_URL') || ''
-    const successUrl = (invoiceId: string, paymentId: string) =>
-      `${APP_URL}/payment-success?invoice=${invoiceId}&payment=${paymentId}`
+    const successUrl = (invoiceId: string, paymentId: string, extra = '') =>
+      `${APP_URL}/payment-success?invoice=${invoiceId}&payment=${paymentId}${extra}`
     const failedUrl = (msg: string) =>
       `${APP_URL}/payment-failed?error=${encodeURIComponent(msg)}`
 
@@ -474,12 +474,25 @@ serve(async (req) => {
         console.log('📦 VDS order(s) queued for admin approval')
       }
 
+      // Check if this is an email promo campaign invoice (extract domain from item description)
+      let extraParams = ''
+      const emailPromoItem = items.find((i: any) =>
+        (i.description || '').includes('Kurumsal E-Posta')
+      )
+      if (emailPromoItem) {
+        // Extract domain from description like "Kurumsal E-Posta Aktivasyon - example.com"
+        const domainMatch = (emailPromoItem.description || '').match(/- (.+?)(?:\s*\(|$)/)
+        if (domainMatch?.[1]) {
+          extraParams = `&promo_domain=${encodeURIComponent(domainMatch[1].trim())}`
+        }
+      }
+
       // Redirect to success page
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': successUrl(payment.invoice_id, payment.id),
+          'Location': successUrl(payment.invoice_id, payment.id, extraParams),
         },
       })
     } else {
