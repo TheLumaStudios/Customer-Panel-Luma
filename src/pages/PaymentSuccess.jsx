@@ -13,10 +13,12 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams()
   const invoiceId = searchParams.get('invoice')
   const paymentId = searchParams.get('payment')
+  const promoDomain = searchParams.get('promo_domain')
 
   const [loading, setLoading] = useState(!!invoiceId)
   const [itemTypes, setItemTypes] = useState([])
   const [invoiceTotal, setInvoiceTotal] = useState(null)
+  const [provisionStatus, setProvisionStatus] = useState(null) // null | 'loading' | 'success' | 'queued'
 
   useEffect(() => {
     confetti({
@@ -42,11 +44,39 @@ export default function PaymentSuccess() {
           trackPurchase(invoiceId, inv.total, inv.currency || 'TRY')
         }
         setItemTypes((items || []).map(i => i.type))
+
+        // Kurumsal E-Posta kampanyası: ödeme başarılıysa cPanel provision başlat
+        if (promoDomain) {
+          setProvisionStatus('loading')
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+              const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+              const fnUrl = baseUrl.includes('/rest/v1')
+                ? baseUrl.replace('/rest/v1', '/functions/v1')
+                : `${baseUrl}/functions/v1`
+
+              const provRes = await fetch(`${fnUrl}/email-promo-provision`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+                },
+                body: JSON.stringify({ domain: promoDomain, email_prefix: 'info' }),
+              })
+              const provResult = await provRes.json()
+              setProvisionStatus(provResult.success && provResult.cpanel_created ? 'success' : 'queued')
+            }
+          } catch {
+            setProvisionStatus('queued')
+          }
+        }
       } finally {
         setLoading(false)
       }
     })()
-  }, [invoiceId])
+  }, [invoiceId, promoDomain])
 
   const renderMessage = () => {
     if (loading) {
@@ -68,6 +98,24 @@ export default function PaymentSuccess() {
         <p className="text-sm">
           Domain kayıt işleminiz sıraya alındı. Ekibimiz reseller panelinden kaydı 5-15 dakika içinde tamamlar.
         </p>
+      )
+    }
+    if (promoDomain) {
+      return (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Kurumsal E-Posta - {promoDomain}</p>
+          {provisionStatus === 'loading' && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> E-posta hesabınız kuruluyor...
+            </div>
+          )}
+          {provisionStatus === 'success' && (
+            <p className="text-sm text-emerald-600 font-medium">E-posta hesabınız başarıyla oluşturuldu! Giriş bilgileriniz e-posta adresinize gönderildi.</p>
+          )}
+          {provisionStatus === 'queued' && (
+            <p className="text-sm">E-posta hesabınız kısa sürede aktif edilecektir. Bilgileriniz hazır olduğunda size e-posta ile bildirilecektir.</p>
+          )}
+        </div>
       )
     }
     if (itemTypes.some(t => t === 'hosting' || t === 'vds')) {
