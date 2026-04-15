@@ -22,10 +22,18 @@ export default function HeroSection() {
 // Kurumsal E-Posta Kampanya Hero
 // İlk ay bedava, kart bilgisi ile kayıt
 // ============================================================================
+// Fiyat: Aylık → 0₺ + 9,90₺×2 + 49,90₺×9 = 469,00₺
+// Fiyat: Yıllık Peşin → 349,99₺ (tasarruf: 119,01₺)
+const PLANS = {
+  monthly: { label: 'Aylık Ödeme', price: 1, totalYear: '469,00₺', badge: null },
+  annual: { label: 'Yıllık Peşin', price: 349.99, totalYear: '349,99₺', badge: '119₺ Tasarruf' },
+}
+
 function EmailPromoHero() {
   const [step, setStep] = useState('form') // 'form' | 'success'
   const [loading, setLoading] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [selectedPlan, setSelectedPlan] = useState('monthly') // 'monthly' | 'annual'
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -112,7 +120,8 @@ function EmailPromoHero() {
         throw new Error('Oturum oluşturulamadı')
       }
 
-      // 4) 0₺ fatura oluştur (Kurumsal E-Posta - kart doğrulama için)
+      // 4) Fatura oluştur (plana göre)
+      const plan = PLANS[selectedPlan]
       const invoiceRes = await fetch(`${functionsUrl}/invoice-create-self`, {
         method: 'POST',
         headers: {
@@ -123,9 +132,11 @@ function EmailPromoHero() {
         body: JSON.stringify({
           items: [{
             type: 'addon',
-            description: `Kurumsal E-Posta Aktivasyon - ${form.domain}`,
+            description: selectedPlan === 'annual'
+              ? `Kurumsal E-Posta 1 Yıl Peşin - ${form.domain}`
+              : `Kurumsal E-Posta Aktivasyon - ${form.domain}`,
             quantity: 1,
-            unit_price: 1, // 1₺ kart doğrulama (iyzico 0₺ kabul etmez)
+            unit_price: plan.price,
           }],
         }),
       })
@@ -264,40 +275,82 @@ function EmailPromoHero() {
               </p>
             </div>
 
-            {/* Pricing timeline */}
-            <div className="flex items-center gap-0">
-              {/* Phase 1 */}
-              <div className="flex-1 relative">
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
-                  <p className="text-[11px] text-emerald-400 font-semibold uppercase tracking-wider mb-1">1. Ay</p>
-                  <p className="text-3xl font-extrabold text-white">0<span className="text-base text-slate-400">₺</span></p>
-                  <p className="text-xs text-emerald-400 mt-1">Tamamen Bedava</p>
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-slate-600 mx-2 shrink-0" />
-              {/* Phase 2 */}
-              <div className="flex-1">
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 text-center">
-                  <p className="text-[11px] text-indigo-400 font-semibold uppercase tracking-wider mb-1">2-3. Ay</p>
-                  <p className="text-3xl font-extrabold text-white">9<span className="text-lg text-slate-400">,90₺</span></p>
-                  <p className="text-xs text-indigo-400 mt-1">Aylık</p>
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-slate-600 mx-2 shrink-0" />
-              {/* Phase 3 */}
-              <div className="flex-1">
-                <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-center">
-                  <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-1">4-12. Ay</p>
-                  <p className="text-3xl font-extrabold text-white">49<span className="text-lg text-slate-400">,90₺</span></p>
-                  <p className="text-xs text-slate-500 mt-1">Aylık</p>
-                </div>
-              </div>
+            {/* Plan Toggle */}
+            <div className="flex bg-slate-800/60 rounded-xl p-1 border border-slate-700/50">
+              <button
+                onClick={() => setSelectedPlan('monthly')}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                  selectedPlan === 'monthly'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Aylık Ödeme
+              </button>
+              <button
+                onClick={() => setSelectedPlan('annual')}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
+                  selectedPlan === 'annual'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Yıllık Peşin
+                <span className="absolute -top-2 -right-1 text-[10px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                  119₺ Kazanç
+                </span>
+              </button>
             </div>
+
+            {/* Pricing timeline - Monthly */}
+            {selectedPlan === 'monthly' ? (
+              <div className="flex items-center gap-0">
+                <div className="flex-1 relative">
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
+                    <p className="text-[11px] text-emerald-400 font-semibold uppercase tracking-wider mb-1">1. Ay</p>
+                    <p className="text-3xl font-extrabold text-white">0<span className="text-base text-slate-400">₺</span></p>
+                    <p className="text-xs text-emerald-400 mt-1">Tamamen Bedava</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-600 mx-2 shrink-0" />
+                <div className="flex-1">
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 text-center">
+                    <p className="text-[11px] text-indigo-400 font-semibold uppercase tracking-wider mb-1">2-3. Ay</p>
+                    <p className="text-3xl font-extrabold text-white">9<span className="text-lg text-slate-400">,90₺</span></p>
+                    <p className="text-xs text-indigo-400 mt-1">Aylık</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-600 mx-2 shrink-0" />
+                <div className="flex-1">
+                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-center">
+                    <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-1">4-12. Ay</p>
+                    <p className="text-3xl font-extrabold text-white">49<span className="text-lg text-slate-400">,90₺</span></p>
+                    <p className="text-xs text-slate-500 mt-1">Aylık</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Pricing - Annual */
+              <div className="relative">
+                <div className="bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-indigo-500/10 border border-indigo-500/30 rounded-xl p-6 text-center">
+                  <p className="text-[11px] text-indigo-400 font-semibold uppercase tracking-wider mb-2">12 Ay Peşin Ödeme</p>
+                  <div className="flex items-baseline justify-center gap-2">
+                    <span className="text-sm text-slate-500 line-through">469,00₺</span>
+                    <span className="text-4xl font-extrabold text-white">349<span className="text-xl text-slate-400">,99₺</span></span>
+                  </div>
+                  <p className="text-sm text-emerald-400 font-medium mt-2">119,01₺ tasarruf edin!</p>
+                  <p className="text-xs text-slate-500 mt-1">Aylık sadece 29,17₺'ye denk gelir</p>
+                </div>
+              </div>
+            )}
 
             {/* Cashback notice */}
             <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-4 py-2.5">
               <Sparkles className="h-4 w-4 text-indigo-400 shrink-0" />
-              <p className="text-sm text-indigo-300">Ödediğiniz tutarın <strong className="text-white">%10'u Promosyon Bakiyenize</strong> iade edilir</p>
+              <p className="text-sm text-indigo-300">
+                Ödediğiniz tutarın <strong className="text-white">%10'u Promosyon Bakiyenize</strong> iade edilir
+                {selectedPlan === 'annual' && <span className="text-emerald-400"> (35₺ bonus!)</span>}
+              </p>
             </div>
 
             {/* Features */}
@@ -343,16 +396,31 @@ function EmailPromoHero() {
                 <div className="bg-slate-800/60 rounded-xl p-4 text-left space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Plan</span>
-                    <span className="text-white font-medium">Kurumsal E-Posta</span>
+                    <span className="text-white font-medium">Kurumsal E-Posta{selectedPlan === 'annual' ? ' (Yıllık)' : ''}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Bu Ay</span>
-                    <span className="text-emerald-400 font-bold">Bedava</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Sonraki Ödeme</span>
-                    <span className="text-white">9,90₺ / ay</span>
-                  </div>
+                  {selectedPlan === 'monthly' ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Bu Ay</span>
+                        <span className="text-emerald-400 font-bold">Bedava</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Sonraki Ödeme</span>
+                        <span className="text-white">9,90₺ / ay</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Ödenen</span>
+                        <span className="text-white font-bold">349,99₺</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Tasarruf</span>
+                        <span className="text-emerald-400 font-bold">119,01₺</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between text-sm border-t border-slate-700 pt-2">
                     <span className="text-slate-400">Cashback</span>
                     <span className="text-indigo-400 font-medium">%10 Promosyon Bakiyesi</span>
@@ -374,7 +442,7 @@ function EmailPromoHero() {
                     <p className="text-xs text-slate-400">Kart bilgisi ile güvenli kayıt</p>
                   </div>
                   <Badge className="ml-auto bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-xs">
-                    0₺
+                    {selectedPlan === 'annual' ? '349,99₺' : '0₺'}
                   </Badge>
                 </div>
 
@@ -430,18 +498,33 @@ function EmailPromoHero() {
                   </div>
 
                   {/* Card info notice */}
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <CreditCard className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-amber-200 font-medium">Neden kart bilgisi istiyoruz?</p>
-                        <p className="text-[11px] text-amber-200/70 mt-0.5 leading-relaxed">
-                          Kötüye kullanımı engellemek için kart doğrulaması yapılır.
-                          İlk ay <strong>0₺</strong> çekilir, istediğiniz zaman iptal edebilirsiniz.
-                        </p>
+                  {selectedPlan === 'monthly' ? (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <CreditCard className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-amber-200 font-medium">Neden kart bilgisi istiyoruz?</p>
+                          <p className="text-[11px] text-amber-200/70 mt-0.5 leading-relaxed">
+                            Kötüye kullanımı engellemek için kart doğrulaması yapılır.
+                            İlk ay <strong>0₺</strong> çekilir, istediğiniz zaman iptal edebilirsiniz.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <CreditCard className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-emerald-200 font-medium">12 ay peşin ödeme</p>
+                          <p className="text-[11px] text-emerald-200/70 mt-0.5 leading-relaxed">
+                            <strong>349,99₺</strong> tek seferlik ödeme ile 1 yıl boyunca kurumsal e-posta hizmeti.
+                            Normal fiyat: 469₺ → <strong>119₺ tasarruf!</strong>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <Turnstile onVerify={setTurnstileToken} theme="dark" />
 
@@ -455,7 +538,7 @@ function EmailPromoHero() {
                     ) : (
                       <>
                         <Lock className="h-4 w-4 mr-2" />
-                        Bedava Başla - Kart ile Doğrula
+                        {selectedPlan === 'annual' ? '349,99₺ Öde - Hemen Başla' : 'Bedava Başla - Kart ile Doğrula'}
                       </>
                     )}
                   </Button>
