@@ -29,7 +29,16 @@ export default function LandingFooter() {
         { label: 'Hakkımızda', href: '/about' },
         { label: 'Fiyatlandırma', href: '/pricing' },
         { label: 'İletişim', href: '/contact' },
-        { label: 'Teslimat & İade', href: '/delivery-return' },
+      ],
+    },
+    {
+      title: 'Yasal',
+      links: [
+        { label: 'Gizlilik Politikası', href: '/privacy' },
+        { label: 'Kullanım Koşulları', href: '/terms' },
+        { label: 'KVKK Aydınlatma', href: '/kvkk' },
+        { label: 'Mesafeli Satış Sözleşmesi', href: '/distance-sales' },
+        { label: 'Teslimat, İade ve İptal', href: '/delivery-return' },
       ],
     },
   ]
@@ -37,7 +46,7 @@ export default function LandingFooter() {
   return (
     <footer className="bg-slate-950 border-t border-slate-800">
       <div className="container px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">

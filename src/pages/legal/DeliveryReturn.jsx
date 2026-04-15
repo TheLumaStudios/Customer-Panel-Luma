@@ -15,7 +15,7 @@ export default function DeliveryReturn() {
               <Truck className="h-5 w-5 text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Teslimat ve İade Şartları</h1>
+              <h1 className="text-3xl font-bold text-white">Teslimat, İade ve İptal Koşulları</h1>
               <p className="text-sm text-slate-500">Son güncelleme: 15 Nisan 2026</p>
             </div>
           </div>
@@ -88,20 +88,28 @@ export default function DeliveryReturn() {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-white mb-3">4. İptal ve Yenileme</h2>
+              <h2 className="text-xl font-semibold text-white mb-3">4. İptal Koşulları</h2>
               <ul className="list-disc list-inside space-y-1.5 text-slate-400">
                 <li>Hizmetlerinizi dilediğiniz zaman müşteri panelinizden iptal edebilirsiniz.</li>
-                <li>İptal edilen hizmetler, mevcut dönemin sonuna kadar aktif kalır.</li>
+                <li>İptal edilen hizmetler, mevcut dönemin sonuna kadar aktif kalır. Dönem sonunda hizmet sonlandırılır.</li>
+                <li>İptal edilen hizmetler için kalan dönem ücreti iade edilmez.</li>
                 <li>Otomatik yenileme özelliği varsayılan olarak aktiftir. Panelden kapatılabilir.</li>
                 <li>Yenileme faturası, hizmet bitiş tarihinden 7 gün önce oluşturulur.</li>
+                <li>Ödeme yapılmayan hizmetler vade tarihinden 3 gün sonra askıya alınır, 15 gün sonra veriler silinerek hizmet iptal edilir.</li>
+                <li>Kullanım koşullarının ihlali nedeniyle iptal edilen hizmetlerde ücret iadesi yapılmaz.</li>
               </ul>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-white mb-3">5. İletişim</h2>
-              <p className="text-slate-400">
-                Teslimat ve iade konularında sorularınız için <a href="mailto:info@lumayazilim.com" className="text-indigo-400 hover:text-indigo-300 underline">info@lumayazilim.com</a> adresinden veya 0544 979 62 57 numarasından bize ulaşabilirsiniz. (Luma Yazılım - Enes POYRAZ, VKN: 7330923351)
-              </p>
+              <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-1 text-sm text-slate-400">
+                <p><strong className="text-slate-200">Yetkili:</strong> Enes POYRAZ</p>
+                <p><strong className="text-slate-200">VKN:</strong> 7330923351</p>
+                <p><strong className="text-slate-200">Adres:</strong> Cumhuriyet Mah. Başak Sk. Yükselen Park Nilüfer St. H Blok Kat:7 D:18 Nilüfer/Bursa</p>
+                <p><strong className="text-slate-200">Telefon:</strong> 0546 780 59 72</p>
+                <p><strong className="text-slate-200">E-posta:</strong> <a href="mailto:enespoyraz380@gmail.com" className="text-indigo-400 hover:text-indigo-300">enespoyraz380@gmail.com</a></p>
+                <p><strong className="text-slate-200">Web:</strong> lumayazilim.com</p>
+              </div>
             </div>
           </div>
         </div>
