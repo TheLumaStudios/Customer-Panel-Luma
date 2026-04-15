@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,19 @@ export default function LinuxHostingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="cPanel Linux Hosting - Web Hosting Paketleri"
+        description="cPanel kontrol panelli Linux hosting paketleri. SSD depolama, limitsiz bandwidth, ücretsiz SSL, LiteSpeed web sunucu. Aylık 26,99₺'den başlayan fiyatlarla."
+        path="/linux-hosting"
+        schema={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "cPanel Linux Hosting",
+          "description": "cPanel kontrol panelli web hosting",
+          "brand": {"@type": "Brand", "name": "Luma Yazılım"},
+          "offers": {"@type": "AggregateOffer", "lowPrice": "26.99", "highPrice": "65.99", "priceCurrency": "TRY", "offerCount": "4"}
+        }}
+      />
       <LandingHeader />
 
       {/* Hero Section */}

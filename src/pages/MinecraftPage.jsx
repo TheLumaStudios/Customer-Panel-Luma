@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -58,6 +59,11 @@ export default function MinecraftPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="Minecraft Sunucu Kiralama"
+        description="Düşük ping Minecraft sunucu kiralama. Türkiye lokasyon, DDoS koruması, mod desteği, anlık kurulum. Profesyonel oyun sunucusu altyapısı."
+        path="/minecraft"
+      />
       <LandingHeader />
 
       {/* Hero Section */}

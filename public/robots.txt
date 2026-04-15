@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /employee/
+Disallow: /dashboard
+Disallow: /invoices
+Disallow: /tickets
+Disallow: /profile
+Disallow: /wallet
+Disallow: /bank-info
+Disallow: /api-keys
+Disallow: /developer
+Disallow: /referrals
+Disallow: /notifications
+Disallow: /my-vds
+Disallow: /domains
+Disallow: /hosting
+Disallow: /network-status
+Disallow: /payment-success
+Disallow: /payment-failed
+Disallow: /payment-callback
+
+Sitemap: https://lumayazilim.com/sitemap.xml

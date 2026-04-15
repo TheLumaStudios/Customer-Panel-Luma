@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,11 @@ export default function WordPressHostingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="WordPress Hosting - Optimize Edilmiş WP Hosting"
+        description="WordPress için optimize edilmiş hosting paketleri. LiteSpeed cache, otomatik güncellemeler, ücretsiz SSL, tek tıkla kurulum. Aylık 26,99₺'den."
+        path="/wordpress-hosting"
+      />
       <LandingHeader />
 
       {/* Hero Section */}

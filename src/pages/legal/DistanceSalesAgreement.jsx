@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { FileText } from 'lucide-react'
@@ -5,6 +6,7 @@ import { FileText } from 'lucide-react'
 export default function DistanceSalesAgreement() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO title="Mesafeli Satış Sözleşmesi" description="Luma Yazılım mesafeli satış sözleşmesi." path="/distance-sales" noindex={true} />
       <LandingHeader />
 
       <section className="relative pt-32 pb-16 overflow-hidden">

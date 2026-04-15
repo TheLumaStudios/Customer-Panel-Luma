@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Building2, Users, Shield, Zap, Globe, Headphones } from 'lucide-react'
@@ -5,6 +6,17 @@ import { Building2, Users, Shield, Zap, Globe, Headphones } from 'lucide-react'
 export default function About() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="Hakkımızda"
+        description="Luma Yazılım hakkında. Bursa merkezli web hosting, domain ve sunucu hizmetleri sunan teknoloji şirketi."
+        path="/about"
+        schema={{
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          "name": "Luma Yazılım Hakkında",
+          "url": "https://lumayazilim.com/about"
+        }}
+      />
       <LandingHeader />
 
       {/* Hero */}

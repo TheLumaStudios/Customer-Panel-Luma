@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,11 @@ export default function CsgoPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="CS:GO / CS2 Sunucu Kiralama"
+        description="128 Tick CS:GO ve CS2 sunucu kiralama. Türkiye lokasyon, düşük ping, DDoS koruması, anlık kurulum. Profesyonel oyun sunucusu."
+        path="/csgo"
+      />
       <LandingHeader />
 
       {/* Hero Section */}

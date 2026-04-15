@@ -4,23 +4,111 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO Defaults (Helmet overrides per page) -->
+    <title>Luma Yazılım - Web Hosting, VDS, VPS ve Domain Hizmetleri</title>
+    <meta name="description" content="Luma Yazılım ile yüksek performanslı web hosting, VDS, VPS ve domain hizmetleri. NVMe SSD, DDoS koruması, 7/24 destek. Türkiye lokasyon, %99.9 uptime garantisi." />
+    <meta name="keywords" content="web hosting, vds sunucu, vps sunucu, domain kayıt, linux hosting, wordpress hosting, dedicated sunucu, türkiye hosting, ucuz hosting, cpanel hosting" />
+    <meta name="author" content="Luma Yazılım" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://lumayazilim.com/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Luma Yazılım" />
+    <meta property="og:title" content="Luma Yazılım - Web Hosting, VDS, VPS ve Domain Hizmetleri" />
+    <meta property="og:description" content="Yüksek performanslı hosting altyapısı. NVMe SSD, DDoS koruması, 7/24 uzman destek. Türkiye lokasyon." />
+    <meta property="og:image" content="https://lumayazilim.com/luma.png" />
+    <meta property="og:url" content="https://lumayazilim.com/" />
+    <meta property="og:locale" content="tr_TR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Luma Yazılım - Web Hosting, VDS, VPS" />
+    <meta name="twitter:description" content="NVMe SSD, DDoS koruması, 7/24 destek. %99.9 uptime garantisi." />
+    <meta name="twitter:image" content="https://lumayazilim.com/luma.png" />
+
+    <!-- GEO -->
+    <meta name="geo.region" content="TR-16" />
+    <meta name="geo.placename" content="Bursa, Türkiye" />
+    <meta name="geo.position" content="40.1885;29.0610" />
+    <meta name="ICBM" content="40.1885, 29.0610" />
+
+    <!-- Structured Data - Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Luma Yazılım",
+      "url": "https://lumayazilim.com",
+      "logo": "https://lumayazilim.com/luma.png",
+      "description": "Web hosting, VDS, VPS ve domain hizmetleri sunan Türkiye merkezli teknoloji şirketi.",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Cumhuriyet Mah. Başak Sk. Yükselen Park Nilüfer St. H Blok Kat:7 D:18",
+        "addressLocality": "Nilüfer",
+        "addressRegion": "Bursa",
+        "postalCode": "16110",
+        "addressCountry": "TR"
+      },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "telephone": "+90-546-780-5972",
+          "contactType": "customer service",
+          "availableLanguage": "Turkish",
+          "areaServed": "TR"
+        },
+        {
+          "@type": "ContactPoint",
+          "telephone": "+90-544-979-6257",
+          "contactType": "technical support",
+          "availableLanguage": "Turkish",
+          "areaServed": "TR"
+        }
+      ],
+      "email": "info@lumayazilim.com",
+      "foundingDate": "2026",
+      "sameAs": [
+        "https://github.com/TheLumaStudios"
+      ]
+    }
+    </script>
+
+    <!-- Structured Data - WebSite (for sitelinks search box) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Luma Yazılım",
+      "url": "https://lumayazilim.com",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://lumayazilim.com/checkout?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#4F46E5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Luma" />
     <link rel="apple-touch-icon" href="/luma.png" />
-    <title>Luma Yazılım - Müşteri Paneli</title>
+
     <!-- Google Ads / Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-5729305733"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      // Only enable if cookie consent was accepted
       var consent = localStorage.getItem('cookie-consent');
       if (consent === 'accepted') {
         gtag('config', 'AW-5729305733');

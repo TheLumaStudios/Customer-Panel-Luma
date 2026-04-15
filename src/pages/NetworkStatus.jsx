@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Server, Wifi, AlertTriangle, CheckCircle, XCircle, MinusCircle, Clock, Activity } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { useLocation } from 'react-router-dom'
@@ -361,6 +362,7 @@ export default function NetworkStatus() {
   if (isPublic) {
     return (
       <div className="min-h-screen bg-slate-950">
+        <SEO title="Sistem Durumu" description="Luma Yazılım sunucu ve hizmet durumları. Anlık uptime bilgileri, aktif olaylar ve performans metrikleri." path="/status" />
         <LandingHeader />
         {content}
         <LandingFooter />

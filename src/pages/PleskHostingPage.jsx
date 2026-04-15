@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,11 @@ export default function PleskHostingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="Plesk Hosting - Plesk Kontrol Panelli Hosting"
+        description="Plesk kontrol panelli web hosting paketleri. Kolay yönetim arayüzü, SSD depolama, ücretsiz SSL. Aylık 26,99₺'den başlayan fiyatlarla."
+        path="/plesk-hosting"
+      />
       <LandingHeader />
 
       {/* Hero Section */}

@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Shield } from 'lucide-react'
@@ -5,6 +6,7 @@ import { Shield } from 'lucide-react'
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO title="Gizlilik Politikası" description="Luma Yazılım gizlilik politikası. Kişisel verilerinizin nasıl toplandığı, işlendiği ve korunduğu hakkında bilgi." path="/privacy" noindex={true} />
       <LandingHeader />
 
       <section className="relative pt-32 pb-16 overflow-hidden">

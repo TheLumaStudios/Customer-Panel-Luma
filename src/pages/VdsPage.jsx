@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,19 @@ export default function VdsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="VDS Sunucu - Sanal Dedicated Sunucu"
+        description="Yüksek performanslı VDS sunucu. 1-64 GB RAM, NVMe SSD, KVM sanallaştırma, 10 Gbit bağlantı. Aylık 129,99₺'den başlayan fiyatlarla."
+        path="/vds"
+        schema={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "VDS Sunucu",
+          "description": "Sanal dedicated sunucu kiralama hizmeti",
+          "brand": {"@type": "Brand", "name": "Luma Yazılım"},
+          "offers": {"@type": "AggregateOffer", "lowPrice": "129.99", "highPrice": "1345.99", "priceCurrency": "TRY", "offerCount": "20"}
+        }}
+      />
       <LandingHeader />
 
       {/* Hero */}

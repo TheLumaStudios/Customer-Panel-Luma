@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,19 @@ export default function VpsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="VPS Sunucu - Sanal Özel Sunucu"
+        description="Türkiye lokasyonlu VPS sunucu kiralama. 1-16 GB RAM, NVMe SSD, KVM sanallaştırma, tam root erişim. Aylık 110,99₺'den başlayan fiyatlarla."
+        path="/vps"
+        schema={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "VPS Sunucu",
+          "description": "Sanal özel sunucu kiralama hizmeti",
+          "brand": {"@type": "Brand", "name": "Luma Yazılım"},
+          "offers": {"@type": "AggregateOffer", "lowPrice": "110.99", "highPrice": "402.99", "priceCurrency": "TRY", "offerCount": "16"}
+        }}
+      />
       <LandingHeader />
 
       {/* Hero */}

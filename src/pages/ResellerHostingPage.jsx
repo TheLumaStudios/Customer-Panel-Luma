@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,11 @@ export default function ResellerHostingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="Reseller Hosting - Bayi Hosting Paketleri"
+        description="WHM kontrol panelli reseller hosting paketleri. Kendi hosting şirketinizi kurun. LiteSpeed, CloudLinux, sınırsız hesap. Aylık 130,99₺'den."
+        path="/reseller-hosting"
+      />
       <LandingHeader />
 
       {/* Hero Section */}

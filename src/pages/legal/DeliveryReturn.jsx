@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Truck, RotateCcw } from 'lucide-react'
@@ -5,6 +6,7 @@ import { Truck, RotateCcw } from 'lucide-react'
 export default function DeliveryReturn() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO title="Teslimat, İade ve İptal" description="Luma Yazılım teslimat süreleri, iade ve iptal koşulları." path="/delivery-return" noindex={true} />
       <LandingHeader />
 
       <section className="relative pt-32 pb-16 overflow-hidden">

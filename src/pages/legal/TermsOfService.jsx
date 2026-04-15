@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { FileText } from 'lucide-react'
@@ -5,6 +6,7 @@ import { FileText } from 'lucide-react'
 export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO title="Kullanım Koşulları" description="Luma Yazılım hizmet kullanım koşulları ve şartları." path="/terms" noindex={true} />
       <LandingHeader />
 
       <section className="relative pt-32 pb-16 overflow-hidden">

@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,19 @@ export default function DedicatedPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO
+        title="Dedicated Sunucu - Kiralık Fiziksel Sunucu"
+        description="AMD Ryzen işlemcili kiralık dedicated sunucular. 32-128 GB RAM, RAID depolama, 10 Gbit bağlantı. Tam root erişim ve 7/24 destek."
+        path="/dedicated"
+        schema={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Dedicated Sunucu",
+          "description": "Kiralık fiziksel sunucu hizmeti",
+          "brand": {"@type": "Brand", "name": "Luma Yazılım"},
+          "offers": {"@type": "AggregateOffer", "lowPrice": "3900.99", "highPrice": "9100.99", "priceCurrency": "TRY", "offerCount": "3"}
+        }}
+      />
       <LandingHeader />
 
       {/* Hero Section */}

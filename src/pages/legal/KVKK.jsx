@@ -1,3 +1,4 @@
+import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
 import { Lock } from 'lucide-react'
@@ -5,6 +6,7 @@ import { Lock } from 'lucide-react'
 export default function KVKK() {
   return (
     <div className="min-h-screen bg-slate-950">
+      <SEO title="KVKK Aydınlatma Metni" description="Luma Yazılım KVKK kapsamında kişisel verilerin korunması aydınlatma metni." path="/kvkk" noindex={true} />
       <LandingHeader />
 
       <section className="relative pt-32 pb-16 overflow-hidden">
