@@ -22,7 +22,7 @@ export default function LoginPage() {
   const handleGitHubLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin + '/dashboard' },
+      options: { redirectTo: 'https://lumayazilim.com/dashboard' },
     })
     if (error) toast.error('GitHub ile giriş başarısız', { description: error.message })
   }
