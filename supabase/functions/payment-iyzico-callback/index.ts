@@ -177,6 +177,29 @@ serve(async (req) => {
         .reduce((s: number, i: any) => s + parseFloat(i.amount), 0)
 
       if (topUpAmount > 0) {
+        // --- Wallet bonus: check wallet_bonus_tiers for matching bracket ---
+        let bonusAmount = 0
+        try {
+          const { data: tiers } = await supabaseClient
+            .from('wallet_bonus_tiers')
+            .select('*')
+            .eq('is_active', true)
+            .lte('min_amount', topUpAmount)
+            .order('min_amount', { ascending: false })
+            .limit(1)
+
+          const tier = tiers?.[0]
+          if (tier && (tier.max_amount === null || topUpAmount <= parseFloat(tier.max_amount))) {
+            bonusAmount = tier.bonus_percentage > 0
+              ? Math.round(topUpAmount * parseFloat(tier.bonus_percentage)) / 100
+              : parseFloat(tier.bonus_fixed) || 0
+          }
+        } catch (bonusErr) {
+          console.error('Bonus tier lookup failed (non-fatal):', bonusErr)
+        }
+
+        const totalCredit = topUpAmount + bonusAmount
+
         // Upsert customer_credit row and record a credit transaction
         const { data: existingCredit } = await supabaseClient
           .from('customer_credit')
@@ -185,7 +208,7 @@ serve(async (req) => {
           .maybeSingle()
 
         const currentBalance = parseFloat(existingCredit?.balance ?? '0')
-        const newBalance = currentBalance + topUpAmount
+        const newBalance = currentBalance + totalCredit
 
         if (existingCredit) {
           await supabaseClient
@@ -211,9 +234,170 @@ serve(async (req) => {
             currency: 'TRY',
             invoice_id: payment.invoice_id,
             payment_id: payment.id,
-            description: `iyzico wallet top-up (invoice ${payment.invoice.invoice_number})`,
-            balance_after: newBalance,
+            description: `Bakiye yükleme (fatura ${payment.invoice.invoice_number})`,
+            balance_after: currentBalance + topUpAmount,
           })
+
+        // Record bonus as separate transaction
+        if (bonusAmount > 0) {
+          await supabaseClient
+            .from('credit_transactions')
+            .insert({
+              customer_id: payment.customer_id,
+              type: 'credit',
+              amount: bonusAmount,
+              currency: 'TRY',
+              invoice_id: payment.invoice_id,
+              description: `Bonus bakiye (%${Math.round(bonusAmount / topUpAmount * 100)})`,
+              balance_after: newBalance,
+            })
+          console.log(`🎁 Wallet bonus: +${bonusAmount} TRY for ${topUpAmount} TRY top-up`)
+        }
+      }
+
+      // --- Cashback: %5 of non-wallet payments credited to wallet ---
+      const nonWalletTotal = items
+        .filter((i: any) => i.type !== 'wallet_topup')
+        .reduce((s: number, i: any) => s + parseFloat(i.amount), 0)
+
+      if (nonWalletTotal > 0) {
+        try {
+          // Get cashback rate from system_settings
+          const { data: cbSetting } = await supabaseClient
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'cashback_rate')
+            .maybeSingle()
+
+          const cashbackRate = parseFloat(cbSetting?.setting_value || '5')
+          if (cashbackRate > 0) {
+            const cashbackAmount = Math.round(nonWalletTotal * cashbackRate) / 100
+
+            if (cashbackAmount > 0) {
+              const { data: cbCredit } = await supabaseClient
+                .from('customer_credit')
+                .select('balance')
+                .eq('customer_id', payment.customer_id)
+                .maybeSingle()
+
+              const cbBalance = parseFloat(cbCredit?.balance ?? '0') + cashbackAmount
+
+              if (cbCredit) {
+                await supabaseClient
+                  .from('customer_credit')
+                  .update({ balance: cbBalance })
+                  .eq('customer_id', payment.customer_id)
+              } else {
+                await supabaseClient
+                  .from('customer_credit')
+                  .insert({ customer_id: payment.customer_id, balance: cbBalance, currency: 'TRY' })
+              }
+
+              await supabaseClient
+                .from('credit_transactions')
+                .insert({
+                  customer_id: payment.customer_id,
+                  type: 'credit',
+                  amount: cashbackAmount,
+                  currency: 'TRY',
+                  invoice_id: payment.invoice_id,
+                  description: `Cashback (%${cashbackRate}) - Fatura ${payment.invoice.invoice_number}`,
+                  balance_after: cbBalance,
+                })
+
+              console.log(`💰 Cashback: +${cashbackAmount} TRY (${cashbackRate}% of ${nonWalletTotal})`)
+            }
+          }
+        } catch (cbErr) {
+          console.error('Cashback processing failed (non-fatal):', cbErr)
+        }
+      }
+
+      // --- Referral reward: if payer has referred_by and this is first paid invoice ---
+      try {
+        // Find customer's profile_id from customer record
+        const { data: customerRec } = await supabaseClient
+          .from('customers')
+          .select('profile_id')
+          .eq('id', payment.customer_id)
+          .single()
+
+        if (customerRec?.profile_id) {
+          const { data: payerProfile } = await supabaseClient
+            .from('profiles')
+            .select('id, referred_by')
+            .eq('id', customerRec.profile_id)
+            .single()
+
+          if (payerProfile?.referred_by) {
+            // Check if this is the first paid invoice for this customer
+            const { count: paidCount } = await supabaseClient
+              .from('invoices')
+              .select('id', { count: 'exact', head: true })
+              .eq('customer_id', payment.customer_id)
+              .eq('status', 'paid')
+
+            // paidCount will be 1 because we just updated this invoice to 'paid'
+            if (paidCount === 1) {
+              const invoiceTotal = parseFloat(payment.invoice?.total || payment.invoice?.total_amount || 0)
+              const rewardAmount = Math.round(invoiceTotal * 10) / 100 // 10%
+
+              if (rewardAmount > 0) {
+                // Insert referral reward
+                await supabaseClient.from('referral_rewards').insert({
+                  referrer_id: payerProfile.referred_by,
+                  referred_id: payerProfile.id,
+                  invoice_id: payment.invoice_id,
+                  invoice_total: invoiceTotal,
+                  reward_amount: rewardAmount,
+                  reward_status: 'credited',
+                })
+
+                // Credit referrer's wallet
+                // Find referrer's customer_id
+                const { data: referrerCustomer } = await supabaseClient
+                  .from('customers')
+                  .select('id')
+                  .eq('profile_id', payerProfile.referred_by)
+                  .maybeSingle()
+
+                if (referrerCustomer) {
+                  const { data: refCredit } = await supabaseClient
+                    .from('customer_credit')
+                    .select('balance')
+                    .eq('customer_id', referrerCustomer.id)
+                    .maybeSingle()
+
+                  const refBalance = parseFloat(refCredit?.balance ?? '0') + rewardAmount
+
+                  if (refCredit) {
+                    await supabaseClient
+                      .from('customer_credit')
+                      .update({ balance: refBalance })
+                      .eq('customer_id', referrerCustomer.id)
+                  } else {
+                    await supabaseClient
+                      .from('customer_credit')
+                      .insert({ customer_id: referrerCustomer.id, balance: refBalance, currency: 'TRY' })
+                  }
+
+                  await supabaseClient.from('credit_transactions').insert({
+                    customer_id: referrerCustomer.id,
+                    type: 'credit',
+                    amount: rewardAmount,
+                    currency: 'TRY',
+                    description: `Referans ödülü (%10) - Fatura #${payment.invoice?.invoice_number || payment.invoice_id}`,
+                    balance_after: refBalance,
+                  })
+
+                  console.log(`🎁 Referral reward: ${rewardAmount} TRY credited to referrer`)
+                }
+              }
+            }
+          }
+        }
+      } catch (refErr) {
+        console.error('Referral reward error (non-fatal):', refErr)
       }
 
       const hasDomain = items.some((i: any) => i.type === 'domain')

@@ -14,6 +14,18 @@
     <meta name="apple-mobile-web-app-title" content="Luma" />
     <link rel="apple-touch-icon" href="/luma.png" />
     <title>Luma Yazılım - Müşteri Paneli</title>
+    <!-- Google Ads / Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-5729305733"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // Only enable if cookie consent was accepted
+      var consent = localStorage.getItem('cookie-consent');
+      if (consent === 'accepted') {
+        gtag('config', 'AW-5729305733');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

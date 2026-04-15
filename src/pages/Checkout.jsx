@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCheckoutStore } from '@/stores/checkoutStore'
 import { useProductCache } from '@/contexts/ProductCacheContext'
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { ShoppingCart, Settings, FileText, CreditCard, Trash2, Check, ArrowRight, ArrowLeft, Loader2, Package, Monitor, Server, Shield, HardDrive, Globe, Building2, Copy, CheckCircle2 } from 'lucide-react'
 import PhoneInput from '@/components/PhoneInput'
+import Turnstile from '@/components/Turnstile'
 
 const STEPS = [
   { key: 'cart', label: 'Sepet', icon: ShoppingCart },
@@ -225,9 +226,26 @@ export default function Checkout() {
     billing_city: '',
   })
   const [guestLoading, setGuestLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const stepIndex = STEPS.findIndex(s => s.key === store.step)
   const isPaying = createSelfInvoice.isPending || initializeIyzico.isPending
+
+  // İlk Ay Bedava: auto-populate ILKAY for new users with 0 paid invoices
+  useEffect(() => {
+    if (!user || store.promoValidated || store.promoCode) return
+    const checkFirstMonth = async () => {
+      const { count } = await supabase
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'paid')
+      if (count === 0) {
+        store.setPromoCode('ILKAY')
+        store.validatePromoCode('ILKAY')
+      }
+    }
+    checkFirstMonth()
+  }, [user])
 
   const goNext = () => {
     const nextStep = STEPS[stepIndex + 1]
@@ -242,6 +260,10 @@ export default function Checkout() {
   const handleGuestRegister = async () => {
     if (!guestForm.full_name || !guestForm.email || !guestForm.phone) {
       toast.error('Ad soyad, e-posta ve telefon zorunludur')
+      return false
+    }
+    if (!turnstileToken) {
+      toast.error('Lütfen güvenlik doğrulamasını tamamlayın')
       return false
     }
     setGuestLoading(true)
@@ -344,7 +366,9 @@ export default function Checkout() {
     try {
       // Her zaman taze fatura oluştur (konfigürasyon değişmiş olabilir)
       const items = buildInvoiceItems(store.items, store.configurations, store.billingPeriod)
-      const invoice = await createSelfInvoice.mutateAsync({ items })
+      const payload = { items }
+      if (store.promoValidated && store.promoCode) payload.promo_code = store.promoCode
+      const invoice = await createSelfInvoice.mutateAsync(payload)
       const invoiceId = invoice.id
       store.setCurrentInvoiceId(invoiceId)
 
@@ -449,21 +473,43 @@ export default function Checkout() {
             </div>
 
             {/* Promo */}
-            <div className="flex gap-2 pt-1">
-              <Input
-                placeholder="Promosyon kodu (Yakında)"
-                value={store.promoCode}
-                onChange={(e) => store.setPromoCode(e.target.value)}
-                className="max-w-xs bg-slate-900 border-slate-800 text-white placeholder:text-slate-600"
-                disabled
-              />
-              <Button
-                variant="ghost"
-                className="border border-slate-800 text-slate-400"
-                disabled
-              >
-                Uygula
-              </Button>
+            <div className="space-y-2 pt-1">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Promosyon kodu"
+                  value={store.promoCode}
+                  onChange={(e) => { store.setPromoCode(e.target.value); if (store.promoValidated) store.clearPromo() }}
+                  className="max-w-xs bg-slate-900 border-slate-800 text-white placeholder:text-slate-600"
+                  disabled={store.promoLoading || store.promoValidated}
+                />
+                {store.promoValidated ? (
+                  <Button variant="ghost" className="border border-red-800 text-red-400 hover:text-red-300" onClick={() => store.clearPromo()}>
+                    Kaldır
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="border border-slate-800 text-slate-400 hover:text-white"
+                    disabled={!store.promoCode || store.promoLoading}
+                    onClick={() => store.validatePromoCode(store.promoCode)}
+                  >
+                    {store.promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Uygula'}
+                  </Button>
+                )}
+              </div>
+              {store.promoError && <p className="text-xs text-red-400">{store.promoError}</p>}
+              {store.promoValidated && store.promoDetails && (
+                <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                  <Check className="h-4 w-4" />
+                  <span>
+                    {store.promoDetails.is_first_month_free
+                      ? 'İlk ay bedava! Kodunuz uygulandı'
+                      : store.promoDetails.discount_type === 'percentage'
+                        ? `%${store.promoDetails.discount_value} indirim uygulandı`
+                        : `${store.promoDetails.calculated_discount}₺ indirim uygulandı`}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Total */}
@@ -999,6 +1045,13 @@ export default function Checkout() {
               </div>
             )}
 
+            {/* Turnstile for guest checkout */}
+            {!user && (
+              <div className="flex justify-center">
+                <Turnstile onVerify={setTurnstileToken} theme="dark" />
+              </div>
+            )}
+
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
               <p className="text-slate-400 mb-5">Ödeme yönteminizi seçin</p>
               <div className="space-y-3">
@@ -1164,8 +1217,9 @@ export default function Checkout() {
                   try {
                     // Fatura oluştur (unpaid olarak)
                     const items = buildInvoiceItems(store.items, store.configurations, store.billingPeriod)
-
-                    const invoice = await createSelfInvoice.mutateAsync({ items })
+                    const bankPayload = { items }
+                    if (store.promoValidated && store.promoCode) bankPayload.promo_code = store.promoCode
+                    const invoice = await createSelfInvoice.mutateAsync(bankPayload)
 
                     // Faturaya havale/EFT notu ekle
                     await supabase.from('invoices').update({

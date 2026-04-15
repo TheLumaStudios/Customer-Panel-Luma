@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   Users,
+  Users2,
   Globe,
   Server,
   HardDrive,
@@ -26,6 +27,9 @@ import {
   Megaphone,
   Wifi,
   Key,
+  Bell,
+  Tag,
+  AlertTriangle,
   Wallet as WalletIcon
 } from 'lucide-react'
 
@@ -50,6 +54,9 @@ const adminMenuItems = [
   { name: 'Departmanlar', path: '/admin/ticket-departments', icon: Building },
   { name: 'Bilgi Bankası', path: '/admin/knowledge-base', icon: BookOpen },
   { name: 'Duyurular', path: '/admin/announcements', icon: Megaphone },
+  { name: 'Promosyon Kodları', path: '/admin/promo-codes', icon: Tag },
+  { name: 'Bakiye İadeler', path: '/admin/wallet-refunds', icon: WalletIcon },
+  { name: 'Olaylar', path: '/admin/incidents', icon: AlertTriangle },
   { name: 'Sistem Ayarları', path: '/admin/system-settings', icon: Sliders },
   { name: 'Ayarlar', path: '/admin/settings', icon: Settings },
 ]
@@ -74,7 +81,9 @@ const customerMenuItems = [
   { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   { name: 'Bilgi Bankası', path: '/knowledge-base', icon: BookOpen },
+  { name: 'Arkadaşını Getir', path: '/referrals', icon: Users2 },
   { name: 'Ağ Durumu', path: '/network-status', icon: Wifi },
+  { name: 'Bildirimler', path: '/notifications', icon: Bell },
   { name: 'API Anahtarları', path: '/api-keys', icon: Key },
   { name: 'Profil', path: '/profile', icon: Settings },
 ]

@@ -130,6 +130,7 @@ serve(async (req) => {
     const body = await req.json()
     const rawItems = Array.isArray(body.items) ? body.items : []
     const notesJson = body.notes_json ?? null
+    const promoCodeInput = body.promo_code ?? null
 
     if (rawItems.length === 0) {
       return json({ success: false, error: 'items is required' }, 400)
@@ -279,14 +280,74 @@ serve(async (req) => {
       return json({ success: false, error: 'wallet_topup cannot be combined with other items' }, 400)
     }
 
+    // --- Promo code validation ---
+    let promoCodeId: string | null = null
+    let discountAmount = 0
+
+    if (promoCodeInput && !hasWalletTopUp) {
+      const { data: promo } = await supabaseAdmin
+        .from('promo_codes')
+        .select('*')
+        .ilike('code', promoCodeInput.trim())
+        .single()
+
+      if (promo && promo.is_active) {
+        const now = new Date()
+        const validFrom = promo.valid_from ? new Date(promo.valid_from) : null
+        const validUntil = promo.valid_until ? new Date(promo.valid_until) : null
+        const dateOk = (!validFrom || validFrom <= now) && (!validUntil || validUntil >= now)
+        const usesOk = promo.max_uses === null || promo.used_count < promo.max_uses
+
+        let perCustomerOk = true
+        if (promo.max_uses_per_customer !== null) {
+          const { count } = await supabaseAdmin
+            .from('promo_code_usage')
+            .select('id', { count: 'exact', head: true })
+            .eq('promo_code_id', promo.id)
+            .eq('customer_id', customerId)
+          perCustomerOk = (count || 0) < promo.max_uses_per_customer
+        }
+
+        // is_first_month_free: must have 0 paid invoices, force monthly
+        if (promo.is_first_month_free) {
+          const { count: paidCount } = await supabaseAdmin
+            .from('invoices')
+            .select('id', { count: 'exact', head: true })
+            .eq('customer_id', customerId)
+            .eq('status', 'paid')
+          if ((paidCount || 0) > 0) {
+            return json({ success: false, error: 'İlk ay bedava kampanyası yalnızca yeni müşteriler için geçerlidir' }, 400)
+          }
+        }
+
+        const rawSubtotal = validatedItems.reduce((s, it) => s + it.amount, 0)
+
+        if (dateOk && usesOk && perCustomerOk && rawSubtotal >= (promo.min_order_amount || 0)) {
+          promoCodeId = promo.id
+
+          if (promo.is_first_month_free) {
+            // Apply 100% discount only to main items (not addons)
+            discountAmount = validatedItems
+              .filter(it => it.type !== 'addon')
+              .reduce((s, it) => s + it.amount, 0)
+          } else if (promo.discount_type === 'percentage') {
+            discountAmount = Math.round(rawSubtotal * promo.discount_value / 100 * 100) / 100
+          } else {
+            discountAmount = Math.min(rawSubtotal, promo.discount_value)
+          }
+        }
+      }
+    }
+
     // Tax: hosting/vds/domain = 20, wallet_topup = 0
     const taxRate = hasWalletTopUp ? 0 : 20
     const subtotal = validatedItems.reduce((s, it) => s + it.amount, 0)
-    const tax = Math.round((subtotal * taxRate) / 100 * 100) / 100
-    const total = Math.round((subtotal + tax) * 100) / 100
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount)
+    const tax = Math.round((discountedSubtotal * taxRate) / 100 * 100) / 100
+    const total = Math.round((discountedSubtotal + tax) * 100) / 100
 
-    if (total <= 0) {
-      return json({ success: false, error: 'invoice total must be positive' }, 400)
+    if (total < 0) {
+      return json({ success: false, error: 'invoice total must not be negative' }, 400)
     }
 
     // --- Create invoice ---
@@ -294,7 +355,7 @@ serve(async (req) => {
       .from('invoices')
       .insert({
         customer_id: customerId, // resolved from customers table, FK-safe
-        status: 'unpaid',
+        status: total === 0 ? 'paid' : 'unpaid',
         due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         subtotal,
         tax,
@@ -302,6 +363,9 @@ serve(async (req) => {
         total_amount: total, // legacy NOT NULL column kept in sync with total
         currency: 'TRY', // forced
         notes: notesJson ? JSON.stringify(notesJson) : null,
+        promo_code_id: promoCodeId,
+        discount_amount: discountAmount,
+        ...(total === 0 ? { paid_date: new Date().toISOString(), payment_method: 'Promosyon Kodu' } : {}),
       })
       .select()
       .single()
@@ -332,6 +396,26 @@ serve(async (req) => {
       console.error('invoice-create-self: insert items failed', itemsError)
       await supabaseAdmin.from('invoices').delete().eq('id', invoice.id)
       return json({ success: false, error: itemsError.message }, 500)
+    }
+
+    // --- Promo: record usage + increment used_count ---
+    if (promoCodeId && discountAmount > 0) {
+      await supabaseAdmin.from('promo_code_usage').insert({
+        promo_code_id: promoCodeId,
+        customer_id: customerId,
+        invoice_id: invoice.id,
+        discount_amount: discountAmount,
+      })
+      // Increment used_count
+      const { data: currentPromo } = await supabaseAdmin
+        .from('promo_codes')
+        .select('used_count')
+        .eq('id', promoCodeId)
+        .single()
+      await supabaseAdmin
+        .from('promo_codes')
+        .update({ used_count: (currentPromo?.used_count || 0) + 1 })
+        .eq('id', promoCodeId)
     }
 
     // --- Domain: insert domain_orders row ---

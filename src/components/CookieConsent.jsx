@@ -16,6 +16,9 @@ export default function CookieConsent() {
 
   const handleAccept = () => {
     localStorage.setItem('cookie-consent', 'accepted')
+    if (typeof window.gtag === 'function') {
+      window.gtag('config', import.meta.env.VITE_GA_MEASUREMENT_ID || 'AW-5729305733')
+    }
     setVisible(false)
   }
 

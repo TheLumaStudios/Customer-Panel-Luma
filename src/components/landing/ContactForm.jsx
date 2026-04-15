@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { MessageSquare, Phone, Mail, MapPin, ArrowRight, User } from 'lucide-react'
 import { toast } from '@/lib/toast'
+import Turnstile, { resetTurnstile } from '@/components/Turnstile'
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -15,9 +16,14 @@ export default function ContactForm() {
     department: 'sales',
     message: '',
   })
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!turnstileToken) {
+      toast.error('Lütfen güvenlik doğrulamasını tamamlayın')
+      return
+    }
     toast.success('Mesajınız gönderildi', {
       description: 'En kısa sürede sizinle iletişime geçeceğiz.',
     })
@@ -28,6 +34,8 @@ export default function ContactForm() {
       department: 'sales',
       message: '',
     })
+    resetTurnstile()
+    setTurnstileToken('')
   }
 
   return (
@@ -112,7 +120,9 @@ export default function ContactForm() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white">
+                <Turnstile onVerify={setTurnstileToken} theme="dark" />
+
+                <Button type="submit" size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" disabled={!turnstileToken}>
                   Mesaj Gönder
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>

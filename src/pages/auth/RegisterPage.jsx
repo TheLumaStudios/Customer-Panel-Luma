@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,8 @@ import PasswordStrength from '@/components/shared/PasswordStrength'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
 import { Github } from 'lucide-react'
+import { trackSignUp } from '@/lib/gtag'
+import Turnstile, { resetTurnstile } from '@/components/Turnstile'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -21,8 +23,16 @@ export default function RegisterPage() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [referralCode, setReferralCode] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) setReferralCode(ref)
+  }, [searchParams])
 
   const handleChange = (e) => {
     setFormData({
@@ -45,6 +55,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (!turnstileToken) {
+      setError('Lütfen güvenlik doğrulamasını tamamlayın')
+      return
+    }
+
     setLoading(true)
 
     const { data, error } = await signUp(formData.email, formData.password, {
@@ -63,8 +78,29 @@ export default function RegisterPage() {
       } else {
         setError(error.message || 'Kayıt olurken bir hata oluştu')
       }
+      resetTurnstile()
+      setTurnstileToken('')
       setLoading(false)
     } else {
+      // If referred by someone, set referred_by on profile
+      if (referralCode && data?.user?.id) {
+        try {
+          const { data: referrer } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', referralCode.toUpperCase())
+            .single()
+          if (referrer) {
+            await supabase
+              .from('profiles')
+              .update({ referred_by: referrer.id })
+              .eq('id', data.user.id)
+          }
+        } catch (refErr) {
+          console.error('Referral link error:', refErr)
+        }
+      }
+      trackSignUp('email')
       navigate('/login')
     }
   }
@@ -80,6 +116,11 @@ export default function RegisterPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {referralCode && (
+              <div className="p-3 text-sm bg-emerald-50 border border-emerald-200 rounded-md text-emerald-800">
+                Bir arkadaşınızın daveti ile geldiniz! Kayıt olduktan sonra ilk ödemenizde arkadaşınız ödül kazanacak.
+              </div>
+            )}
             {error && (
               <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive rounded-md">
                 {error}
@@ -162,9 +203,10 @@ export default function RegisterPage() {
                 disabled={loading}
               />
             </div>
+            <Turnstile onVerify={setTurnstileToken} theme="light" />
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
               {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
             </Button>
             <div className="relative w-full">

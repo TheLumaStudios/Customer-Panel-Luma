@@ -19,6 +19,10 @@ export const useCheckoutStore = create(
       // Promo code
       promoCode: '',
       promoDiscount: 0,
+      promoValidated: false,
+      promoLoading: false,
+      promoError: '',
+      promoDetails: null, // { discount_type, discount_value, calculated_discount, is_first_month_free, promo_code_id }
 
       // Billing period
       billingPeriod: 'monthly', // monthly, quarterly, semi_annual, annual
@@ -52,6 +56,51 @@ export const useCheckoutStore = create(
 
       setPromoCode: (code, discount = 0) => set({ promoCode: code, promoDiscount: discount }),
 
+      validatePromoCode: async (code) => {
+        set({ promoLoading: true, promoError: '', promoValidated: false, promoDetails: null })
+        try {
+          const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+          const functionsUrl = baseUrl.includes('/rest/v1')
+            ? baseUrl.replace('/rest/v1', '/functions/v1')
+            : `${baseUrl}/functions/v1`
+          const subtotal = get().getSubtotal()
+          const res = await fetch(`${functionsUrl}/promo-validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '' },
+            body: JSON.stringify({ code, subtotal }),
+          })
+          const data = await res.json()
+          if (data.valid) {
+            const discount = data.discount_type === 'percentage' ? data.discount_value : 0
+            set({
+              promoValidated: true,
+              promoLoading: false,
+              promoCode: code.toUpperCase(),
+              promoDiscount: discount,
+              promoDetails: data,
+              currentInvoiceId: null,
+            })
+            return data
+          } else {
+            set({ promoLoading: false, promoError: data.error || 'Geçersiz kod' })
+            return null
+          }
+        } catch {
+          set({ promoLoading: false, promoError: 'Doğrulama başarısız' })
+          return null
+        }
+      },
+
+      clearPromo: () => set({
+        promoCode: '',
+        promoDiscount: 0,
+        promoValidated: false,
+        promoLoading: false,
+        promoError: '',
+        promoDetails: null,
+        currentInvoiceId: null,
+      }),
+
       setBillingPeriod: (period) => set({ billingPeriod: period, currentInvoiceId: null }),
 
       setCurrentInvoiceId: (id) => set({ currentInvoiceId: id }),
@@ -82,6 +131,10 @@ export const useCheckoutStore = create(
         configurations: {},
         promoCode: '',
         promoDiscount: 0,
+        promoValidated: false,
+        promoLoading: false,
+        promoError: '',
+        promoDetails: null,
         billingPeriod: 'monthly',
         currentInvoiceId: null,
       }),

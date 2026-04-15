@@ -80,6 +80,11 @@ import RevenueSplit from '@/pages/admin/RevenueSplit'
 import CustomerFormPage from '@/pages/admin/CustomerFormPage'
 import ProjectMilestones from '@/pages/admin/ProjectMilestones'
 import Checkout from '@/pages/Checkout'
+import PromoCodes from '@/pages/admin/PromoCodes'
+import AdminIncidents from '@/pages/admin/Incidents'
+import Referrals from '@/pages/customer/Referrals'
+import NotificationPreferences from '@/pages/customer/NotificationPreferences'
+import WalletRefunds from '@/pages/admin/WalletRefunds'
 
 function App() {
   return (
@@ -174,6 +179,9 @@ function App() {
             <Route path="audit-logs" element={<AuditLogs />} />
             <Route path="revenue-split" element={<RevenueSplit />} />
             <Route path="project-milestones" element={<ProjectMilestones />} />
+            <Route path="promo-codes" element={<PromoCodes />} />
+            <Route path="incidents" element={<AdminIncidents />} />
+            <Route path="wallet-refunds" element={<WalletRefunds />} />
           </Route>
 
           {/* Employee routes */}
@@ -246,6 +254,12 @@ function App() {
           </Route>
           <Route path="/network-status" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<NetworkStatus />} />
+          </Route>
+          <Route path="/referrals" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<Referrals />} />
+          </Route>
+          <Route path="/notifications" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
+            <Route index element={<NotificationPreferences />} />
           </Route>
 
           {/* Public routes */}

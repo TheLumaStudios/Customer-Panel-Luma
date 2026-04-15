@@ -6,9 +6,10 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { supabase } from '@/lib/supabase'
-import { X } from 'lucide-react'
+import { X, Bell } from 'lucide-react'
 import { GhostBanner } from '@/components/shared/GhostBanner'
 import IdCardUploadGate from '@/components/kyc/IdCardUploadGate'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 const announcementColors = {
   info: 'bg-blue-50 border-blue-200 text-blue-800',
@@ -21,6 +22,8 @@ export default function MainLayout() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [announcements, setAnnouncements] = useState([])
   const [dismissedIds, setDismissedIds] = useState([])
+  const [pushBannerDismissed, setPushBannerDismissed] = useState(() => localStorage.getItem('luma-push-dismissed') === '1')
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: pushSubscribe } = usePushNotifications()
 
   useKeyboardShortcuts({
     onHelpOpen: () => setHelpOpen(true)
@@ -70,6 +73,33 @@ export default function MainLayout() {
           </button>
         </div>
       ))}
+
+      {/* Push Notification Banner */}
+      {pushSupported && !pushSubscribed && !pushBannerDismissed && (
+        <div className="flex items-center justify-between px-5 py-2.5 border-b bg-indigo-50 border-indigo-200 text-sm text-indigo-800">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <span>Bildirimleri açarak fatura hatırlatmaları ve sunucu durumu güncellemelerini anında alın.</span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+            <button
+              onClick={async () => {
+                const ok = await pushSubscribe()
+                if (ok) setPushBannerDismissed(true)
+              }}
+              className="px-3 py-1 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
+            >
+              Bildirimleri Aç
+            </button>
+            <button
+              onClick={() => { setPushBannerDismissed(true); localStorage.setItem('luma-push-dismissed', '1') }}
+              className="p-1 rounded hover:bg-black/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Ana İçerik */}
       <main className="max-w-[1600px] mx-auto p-5">

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
 import { Github } from 'lucide-react'
+import Turnstile, { resetTurnstile } from '@/components/Turnstile'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [magicLinkMode, setMagicLinkMode] = useState(false)
   const [magicLinkEmail, setMagicLinkEmail] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -45,6 +47,12 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (!turnstileToken) {
+      setError('Lütfen güvenlik doğrulamasını tamamlayın')
+      return
+    }
+
     setLoading(true)
 
     const { data, error } = await signIn(email, password)
@@ -60,6 +68,8 @@ export default function LoginPage() {
       } else {
         setError(error.message || 'Giriş yapılırken bir hata oluştu')
       }
+      resetTurnstile()
+      setTurnstileToken('')
       setLoading(false)
     } else {
       // Login başarılı, yönlendir
@@ -109,9 +119,10 @@ export default function LoginPage() {
                 disabled={loading}
               />
             </div>
+            <Turnstile onVerify={setTurnstileToken} theme="light" />
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </Button>
             <div className="relative my-4 w-full">

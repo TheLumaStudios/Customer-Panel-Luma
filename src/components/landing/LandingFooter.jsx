@@ -29,6 +29,7 @@ export default function LandingFooter() {
         { label: 'Hakkımızda', href: '/about' },
         { label: 'Fiyatlandırma', href: '/pricing' },
         { label: 'İletişim', href: '/contact' },
+        { label: 'Sistem Durumu', href: '/status' },
       ],
     },
     {

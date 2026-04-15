@@ -507,6 +507,7 @@ export const deleteInvoice = async (id) => {
 *
 * @param {Object} payload
 * @param {Array}  payload.items       - [{ type, package_id?, billing_period?, quantity?, unit_price?, description? }]
+* @param {string} payload.promo_code  - Optional promo/coupon code
 * @param {Object} payload.notes_json  - Optional { contacts, nameservers, domains } (domain flow only)
 */
 export const createSelfInvoice = async (payload) => {
