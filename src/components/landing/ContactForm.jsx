@@ -147,7 +147,7 @@ export default function ContactForm() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-sm">Açık Posta Adresi</h4>
-                  <p className="text-sm text-slate-400 mt-0.5">Üçevler Mah. Dumlupınar Cd. No:5/A Nilüfer/Bursa</p>
+                  <p className="text-sm text-slate-400 mt-0.5">Cumhuriyet Mah. Başak Sk. Yükselen Park Nilüfer St. H Blok Kat:7 D:18 Nilüfer/Bursa</p>
                 </div>
               </div>
 
@@ -157,7 +157,7 @@ export default function ContactForm() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-sm">Elektronik İletişim Adresi</h4>
-                  <a href="mailto:info@lumayazilim.com" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">info@lumayazilim.com</a>
+                  <a href="mailto:enespoyraz380@gmail.com" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">enespoyraz380@gmail.com</a>
                 </div>
               </div>
 
@@ -167,7 +167,7 @@ export default function ContactForm() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-sm">Telefon Numarası</h4>
-                  <a href="tel:+905449796257" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">0544 979 62 57</a>
+                  <a href="tel:+905467805972" className="text-sm text-indigo-400 hover:text-indigo-300 mt-0.5 block">0546 780 59 72</a>
                 </div>
               </div>
             </div>

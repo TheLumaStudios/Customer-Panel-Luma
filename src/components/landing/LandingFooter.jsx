@@ -53,17 +53,17 @@ export default function LandingFooter() {
               <div className="text-sm text-slate-400">
                 <strong className="text-slate-300">Yetkili:</strong> Enes POYRAZ
               </div>
-              <a href="mailto:info@lumayazilim.com" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+              <a href="mailto:enespoyraz380@gmail.com" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
                 <Mail className="h-4 w-4" />
-                info@lumayazilim.com
+                enespoyraz380@gmail.com
               </a>
-              <a href="tel:+905449796257" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+              <a href="tel:+905467805972" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
                 <Phone className="h-4 w-4" />
-                0544 979 62 57
+                0546 780 59 72
               </a>
               <div className="flex items-start gap-2 text-sm text-slate-400">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-                Üçevler Mah. Dumlupınar Cd. No:5/A Nilüfer/Bursa
+                Cumhuriyet Mah. Başak Sk. Yükselen Park Nilüfer St. H Blok Kat:7 D:18 Nilüfer/Bursa
               </div>
             </div>
           </div>
