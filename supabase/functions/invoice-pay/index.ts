@@ -253,6 +253,54 @@ serve(async (req) => {
       }
     }
 
+    // --- Kurumsal E-Posta kampanyası: ödeme onayında otomatik provision ---
+    try {
+      const { data: invoiceItems } = await supabaseAdmin
+        .from('invoice_items')
+        .select('description')
+        .eq('invoice_id', invoice.id)
+
+      const emailPromoItem = (invoiceItems || []).find((i: any) =>
+        (i.description || '').includes('Kurumsal E-Posta')
+      )
+
+      if (emailPromoItem) {
+        // Extract domain from description
+        const domainMatch = (emailPromoItem.description || '').match(/- (.+?)(?:\s*\(|$)/)
+        const promoDomain = domainMatch?.[1]?.trim()
+
+        if (promoDomain) {
+          console.log('📧 Email promo detected, triggering provision for:', promoDomain)
+
+          // Find the customer's profile_id for auth
+          const { data: custData } = await supabaseAdmin
+            .from('customers')
+            .select('profile_id')
+            .eq('id', invoice.customer_id)
+            .single()
+
+          if (custData?.profile_id) {
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/email-promo-provision`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({
+                domain: promoDomain,
+                email_prefix: 'info',
+                // Service role ile cagiriyoruz, user context icin profile_id gonderiyoruz
+                _override_user_id: custData.profile_id,
+              }),
+            })
+            console.log('✅ Email promo provision triggered')
+          }
+        }
+      }
+    } catch (promoErr) {
+      console.error('Email promo provision failed (non-fatal):', promoErr)
+    }
+
     console.log('✅ Invoice paid:', invoice.invoice_number, 'Method:', payment_method)
 
     return new Response(

@@ -33,29 +33,43 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-    if (authError || !user) return json({ success: false, error: 'Unauthorized' }, 401)
-
-    const { domain, email_prefix } = await req.json()
+    const body = await req.json()
+    const { domain, email_prefix, _override_user_id } = body
 
     if (!domain) {
       return json({ success: false, error: 'Domain gerekli' }, 400)
+    }
+
+    // Resolve user: either from JWT or from _override_user_id (service role calls)
+    let userId: string | null = null
+
+    if (_override_user_id) {
+      // Called from invoice-pay or other service role functions
+      const isServiceRole = authHeader?.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '__NONE__')
+      if (isServiceRole) {
+        userId = _override_user_id
+      }
+    }
+
+    if (!userId) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      )
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+      if (authError || !user) return json({ success: false, error: 'Unauthorized' }, 401)
+      userId = user.id
     }
 
     // Resolve customer
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('id, email, full_name')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
-    const customerEmail = profile?.email || user.email || ''
+    const customerEmail = profile?.email || ''
 
     let customerRow = null
     if (customerEmail) {
@@ -70,7 +84,7 @@ serve(async (req) => {
       const { data } = await supabaseAdmin
         .from('customers')
         .select('id')
-        .eq('profile_id', user.id)
+        .eq('profile_id', userId)
         .maybeSingle()
       customerRow = data
     }
