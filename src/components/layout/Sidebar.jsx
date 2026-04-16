@@ -78,7 +78,7 @@ const customerMenuItems = [
   { name: 'Hostingim', path: '/hosting', icon: Server },
   { name: 'VDS / VPS', path: '/my-vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
-  { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
+  // { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   { name: 'Bilgi Bankası', path: '/knowledge-base', icon: BookOpen },
   { name: 'Arkadaşını Getir', path: '/referrals', icon: Users2 },
