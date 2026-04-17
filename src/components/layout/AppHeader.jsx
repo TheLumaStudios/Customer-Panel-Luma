@@ -147,7 +147,7 @@ const customerNav = [
   { name: 'Hostingim', path: '/hosting', icon: ServerIcon },
   { name: 'VDS / VPS', path: '/my-vds', icon: Cpu },
   { name: 'Faturalarım', path: '/invoices', icon: FileText },
-  { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
+  // { name: 'Cüzdanım', path: '/wallet', icon: WalletIcon },
   { name: 'Havale Bilgileri', path: '/bank-info', icon: Landmark },
   { name: 'Destek', path: '/tickets', icon: Ticket },
   {
