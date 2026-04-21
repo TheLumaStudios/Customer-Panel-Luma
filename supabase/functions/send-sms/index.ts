@@ -1,6 +1,6 @@
-// Supabase Edge Function for sending SMS via VatanSMS
+// Supabase Edge Function for sending SMS via TopluSMS
 // Deploy: supabase functions deploy send-sms
-// Secrets: supabase secrets set VATANSMS_API_ID=xxx VATANSMS_API_KEY=xxx VATANSMS_SENDER=xxx
+// Secrets: supabase secrets set VATANSMS_API_KEY=xxx VATANSMS_SENDER=xxx
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -66,14 +66,13 @@ serve(async (req) => {
       )
     }
 
-    const apiId = Deno.env.get('VATANSMS_API_ID')
     const apiKey = Deno.env.get('VATANSMS_API_KEY')
     const sender = Deno.env.get('VATANSMS_SENDER') || 'LUMAYAZILIM'
-    const apiUrl = 'https://api.vatansms.net/api/v1'
+    const apiUrl = 'https://api.toplusms.app/api/v1'
 
-    if (!apiId || !apiKey) {
+    if (!apiKey) {
       // Simulate in dev
-      console.warn('VatanSMS credentials not configured. Simulating SMS send...')
+      console.warn('TopluSMS credentials not configured. Simulating SMS send...')
 
       await supabaseAdmin.from('sms_logs').insert({
         phone,
@@ -95,7 +94,6 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        api_id: apiId,
         api_key: apiKey,
         sender,
         message_type: 'turkce',
