@@ -2,7 +2,7 @@
 // Deploy: supabase functions deploy send-sms
 // Secrets: supabase secrets set VATANSMS_API_KEY=xxx VATANSMS_SENDER=xxx
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
