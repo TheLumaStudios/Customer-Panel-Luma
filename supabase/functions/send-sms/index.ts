@@ -67,7 +67,7 @@ serve(async (req) => {
     }
 
     const apiKey = Deno.env.get('VATANSMS_API_KEY')
-    const sender = Deno.env.get('VATANSMS_SENDER') || 'LUMAYAZILIM'
+    const sender = 'LUMAYAZILIM'
     const apiUrl = 'https://api.toplusms.app/api/v1'
 
     if (!apiKey) {
@@ -90,20 +90,24 @@ serve(async (req) => {
 
     const cleanPhone = phone.replace(/\s+/g, '').replace(/-/g, '')
 
+    const requestBody = {
+      api_key: apiKey,
+      sender,
+      message_type: 'normal',
+      message_content_type: 'bilgi',
+      message,
+      phones: [cleanPhone],
+    }
+    console.log('SMS Request:', JSON.stringify({ sender, phone: cleanPhone, apiUrl }))
+
     const response = await fetch(`${apiUrl}/1toN`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        sender,
-        message_type: 'normal',
-        message_content_type: 'bilgi',
-        message,
-        phones: [cleanPhone],
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     const result = await response.json()
+    console.log('SMS Response:', JSON.stringify(result))
 
     const smsCount = Math.ceil(message.length / 160) || 1
 
