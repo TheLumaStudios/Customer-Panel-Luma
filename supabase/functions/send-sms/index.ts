@@ -96,9 +96,9 @@ serve(async (req) => {
       body: JSON.stringify({
         api_key: apiKey,
         sender,
-        message_type: 'turkce',
+        message_type: 'normal',
         message,
-        phones: [cleanPhone],
+        phones: cleanPhone,
       }),
     })
 
