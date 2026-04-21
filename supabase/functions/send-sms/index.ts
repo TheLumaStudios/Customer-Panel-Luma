@@ -97,6 +97,7 @@ serve(async (req) => {
         api_key: apiKey,
         sender,
         message_type: 'normal',
+        message_content_type: 'bilgi',
         message,
         phones: cleanPhone,
       }),
