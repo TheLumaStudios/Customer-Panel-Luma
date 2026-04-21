@@ -99,7 +99,7 @@ serve(async (req) => {
         message_type: 'normal',
         message_content_type: 'bilgi',
         message,
-        phones: cleanPhone,
+        phones: [cleanPhone],
       }),
     })
 
