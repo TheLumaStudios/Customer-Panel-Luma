@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Check, Shield, Zap, RefreshCw, Bug } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useProductCache } from '@/contexts/ProductCacheContext'
+import { viewContent } from '@/lib/metaPixel'
 
 const formatPrice = (price) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(price)
 const formatDisk = (gb) => gb === -1 ? 'Sınırsız' : `${gb} GB`
@@ -18,6 +20,10 @@ const wpFeatures = [
 
 export default function WordPressHostingPage() {
   const { packages } = useProductCache('cpanel_hosting')
+
+  useEffect(() => {
+    viewContent({ contentId: 'wordpress_hosting', contentName: 'WordPress Hosting', contentType: 'product_group', value: 26.99 })
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-950">

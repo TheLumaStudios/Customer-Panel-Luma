@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { addToCart as pixelAddToCart } from '@/lib/metaPixel'
 
 export const useCheckoutStore = create(
   persist(
@@ -37,6 +38,14 @@ export const useCheckoutStore = create(
 
       addItem: (item) => set((state) => {
         if (state.items.find(i => i.id === item.id)) return state
+        // Meta Pixel: AddToCart event
+        pixelAddToCart({
+          contentId: item.slug || item.id,
+          contentName: item.name,
+          contentType: 'product',
+          value: item.price_monthly,
+          currency: 'TRY',
+        })
 // Any cart change invalidates a cached draft invoice
         return { items: [...state.items, item], currentInvoiceId: null }
       }),

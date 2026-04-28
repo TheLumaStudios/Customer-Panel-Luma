@@ -6,7 +6,8 @@ import { CheckCircle2, Loader2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { supabase } from '@/lib/supabase'
 import { useCheckoutStore } from '@/stores/checkoutStore'
-import { trackPurchase } from '@/lib/gtag'
+import { trackPurchase } from '@/lib/analytics'
+import { purchase as pixelPurchase } from '@/lib/metaPixel'
 
 export default function PaymentSuccess() {
   const navigate = useNavigate()
@@ -42,6 +43,11 @@ export default function PaymentSuccess() {
         setInvoiceTotal(inv?.total ?? null)
         if (inv?.total && invoiceId) {
           trackPurchase(invoiceId, inv.total, inv.currency || 'TRY')
+          pixelPurchase({
+            orderId: invoiceId,
+            value: inv.total,
+            currency: inv.currency || 'TRY',
+          })
         }
         setItemTypes((items || []).map(i => i.type))
 

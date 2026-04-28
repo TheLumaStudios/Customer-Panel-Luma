@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Cookie, X } from 'lucide-react'
+import { initPixel } from '@/lib/metaPixel'
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false)
@@ -12,6 +13,10 @@ export default function CookieConsent() {
       const timer = setTimeout(() => setVisible(true), 1500)
       return () => clearTimeout(timer)
     }
+    // Daha önce kabul edilmişse Pixel'i başlat
+    if (consent === 'accepted') {
+      initPixel()
+    }
   }, [])
 
   const handleAccept = () => {
@@ -19,6 +24,7 @@ export default function CookieConsent() {
     if (typeof window.gtag === 'function') {
       window.gtag('config', import.meta.env.VITE_GA_MEASUREMENT_ID || 'AW-5729305733')
     }
+    initPixel()
     setVisible(false)
   }
 

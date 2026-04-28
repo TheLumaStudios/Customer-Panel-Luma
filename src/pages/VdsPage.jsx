@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -6,12 +7,17 @@ import { Shield, Cpu, Terminal, Headphones, Wifi, Zap, HardDrive } from 'lucide-
 import { useProductCache } from '@/contexts/ProductCacheContext'
 import { useCheckoutStore } from '@/stores/checkoutStore'
 import { toast } from 'sonner'
+import { viewContent } from '@/lib/metaPixel'
 
 const formatPrice = (price) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(price)
 
 export default function VdsPage() {
   const { packages } = useProductCache('vds')
   const addToCheckout = useCheckoutStore(s => s.addItem)
+
+  useEffect(() => {
+    viewContent({ contentId: 'vds', contentName: 'VDS Sunucu', contentType: 'product_group', value: 129.99 })
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -113,7 +119,7 @@ export default function VdsPage() {
                           size="sm"
                           className="rounded-full px-5 bg-indigo-600 hover:bg-indigo-500"
                           onClick={() => {
-                            addToCheckout({ id: pkg.id, name: pkg.name, price_monthly: pkg.price_monthly, product_type: 'vds', package_id: pkg.id })
+                            addToCheckout({ id: pkg.id, slug: pkg.slug, name: pkg.name, price_monthly: pkg.price_monthly, product_type: 'vds', package_id: pkg.id })
                             toast.success('Sepete eklendi', { description: pkg.name })
                           }}
                         >

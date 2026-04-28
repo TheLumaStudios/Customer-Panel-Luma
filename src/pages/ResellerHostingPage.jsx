@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -5,12 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Check, Globe, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useProductCache } from '@/contexts/ProductCacheContext'
+import { viewContent } from '@/lib/metaPixel'
 
 const formatPrice = (price) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(price)
 const formatDisk = (gb) => gb === -1 ? 'Sınırsız' : `${gb} GB`
 
 export default function ResellerHostingPage() {
   const { packages } = useProductCache('reseller_hosting')
+
+  useEffect(() => {
+    viewContent({ contentId: 'reseller_hosting', contentName: 'Reseller Hosting', contentType: 'product_group', value: 130.00 })
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-950">
