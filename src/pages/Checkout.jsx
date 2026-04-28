@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCheckoutStore } from '@/stores/checkoutStore'
 import { initiateCheckout } from '@/lib/metaPixel'
+import { capiInitiateCheckout, capiAddPaymentInfo } from '@/lib/metaCapi'
 import { useProductCache } from '@/contexts/ProductCacheContext'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCreateSelfInvoice, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
@@ -257,11 +258,18 @@ export default function Checkout() {
     const nextStep = STEPS[stepIndex + 1]
     if (nextStep) {
       if (nextStep.key === 'payment') {
-        initiateCheckout({
-          contentIds: store.items.map(i => i.slug || i.id),
-          numItems: store.items.length,
+        const ids = store.items.map(i => i.slug || i.id)
+        const total = store.getTotal?.() ?? store.getSubtotal?.()
+        initiateCheckout({ contentIds: ids, numItems: store.items.length, value: total, currency: 'TRY' })
+        capiInitiateCheckout({ contentIds: ids, numItems: store.items.length, value: total, currency: 'TRY', email: store.customerInfo?.email })
+      }
+      if (nextStep.key === 'review') {
+        capiAddPaymentInfo({
           value: store.getTotal?.() ?? store.getSubtotal?.(),
           currency: 'TRY',
+          contentIds: store.items.map(i => i.slug || i.id),
+          email: store.customerInfo?.email,
+          phone: store.customerInfo?.phone,
         })
       }
       store.setStep(nextStep.key)

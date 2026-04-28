@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { MessageSquare, Phone, Mail, MapPin, ArrowRight, User } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import Turnstile, { resetTurnstile } from '@/components/Turnstile'
+import { capiContact } from '@/lib/metaCapi'
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -27,6 +28,7 @@ export default function ContactForm() {
     toast.success('Mesajınız gönderildi', {
       description: 'En kısa sürede sizinle iletişime geçeceğiz.',
     })
+    capiContact({ email: formData.email, firstName: formData.firstName, lastName: formData.lastName })
     setFormData({
       firstName: '',
       lastName: '',
@@ -121,6 +123,14 @@ export default function ContactForm() {
                 </div>
 
                 <Turnstile onVerify={setTurnstileToken} theme="dark" />
+
+                <p className="text-xs text-slate-500">
+                  Formu göndererek, kişisel verilerinizin talebinizin değerlendirilmesi amacıyla işlenmesini kabul etmiş olursunuz.
+                  Detaylı bilgi için{' '}
+                  <a href="/kvkk" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline">
+                    KVKK Aydınlatma Metni
+                  </a>'ni inceleyiniz.
+                </p>
 
                 <Button type="submit" size="lg" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" disabled={!turnstileToken}>
                   Mesaj Gönder

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { useCheckoutStore } from '@/stores/checkoutStore'
 import { trackPurchase } from '@/lib/analytics'
 import { purchase as pixelPurchase } from '@/lib/metaPixel'
+import { capiPurchase } from '@/lib/metaCapi'
 
 export default function PaymentSuccess() {
   const navigate = useNavigate()
@@ -36,17 +37,29 @@ export default function PaymentSuccess() {
     if (!invoiceId) return
     ;(async () => {
       try {
-        const [{ data: inv }, { data: items }] = await Promise.all([
+        const [{ data: inv }, { data: items }, { data: profile }] = await Promise.all([
           supabase.from('invoices').select('total, currency').eq('id', invoiceId).maybeSingle(),
           supabase.from('invoice_items').select('type').eq('invoice_id', invoiceId),
+          supabase.from('profiles').select('full_name, email, phone').maybeSingle(),
         ])
         setInvoiceTotal(inv?.total ?? null)
         if (inv?.total && invoiceId) {
+          const [firstName, ...rest] = (profile?.full_name || '').split(' ')
+          const lastName = rest.join(' ')
           trackPurchase(invoiceId, inv.total, inv.currency || 'TRY')
           pixelPurchase({
             orderId: invoiceId,
             value: inv.total,
             currency: inv.currency || 'TRY',
+          })
+          capiPurchase({
+            orderId: invoiceId,
+            value: inv.total,
+            currency: inv.currency || 'TRY',
+            email: profile?.email,
+            phone: profile?.phone,
+            firstName,
+            lastName,
           })
         }
         setItemTypes((items || []).map(i => i.type))

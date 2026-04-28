@@ -6,10 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import PasswordStrength from '@/components/shared/PasswordStrength'
+import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
 import { Github } from 'lucide-react'
-import { trackSignUp } from '@/lib/gtag'
+import { trackSignUp } from '@/lib/analytics'
+import { completeRegistration as pixelCompleteRegistration } from '@/lib/metaPixel'
+import { capiCompleteRegistration } from '@/lib/metaCapi'
 import Turnstile, { resetTurnstile } from '@/components/Turnstile'
 
 export default function RegisterPage() {
@@ -25,6 +28,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [referralCode, setReferralCode] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [kvkkAccepted, setKvkkAccepted] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -60,6 +64,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (!kvkkAccepted) {
+      setError('KVKK Aydınlatma Metni ve Gizlilik Politikası\'nı kabul etmeniz gerekmektedir')
+      return
+    }
+
     setLoading(true)
 
     const { data, error } = await signUp(formData.email, formData.password, {
@@ -82,6 +91,23 @@ export default function RegisterPage() {
       setTurnstileToken('')
       setLoading(false)
     } else {
+      // Log KVKK consent
+      if (data?.user?.id) {
+        try {
+          await supabase.from('kvkk_consents').insert({
+            user_id: data.user.id,
+            consent_type: 'registration',
+            kvkk_accepted: true,
+            privacy_accepted: true,
+            terms_accepted: true,
+            ip_address: null, // Server-side olarak alınabilir
+            accepted_at: new Date().toISOString(),
+          })
+        } catch (consentErr) {
+          console.error('KVKK consent log error:', consentErr)
+        }
+      }
+
       // If referred by someone, set referred_by on profile
       if (referralCode && data?.user?.id) {
         try {
@@ -101,6 +127,14 @@ export default function RegisterPage() {
         }
       }
       trackSignUp('email')
+      pixelCompleteRegistration()
+      const [firstName, ...rest] = (formData.full_name || '').split(' ')
+      capiCompleteRegistration({
+        email: formData.email,
+        phone: formData.phone,
+        firstName,
+        lastName: rest.join(' '),
+      })
       navigate('/login')
     }
   }
@@ -204,9 +238,25 @@ export default function RegisterPage() {
               />
             </div>
             <Turnstile onVerify={setTurnstileToken} theme="light" />
+
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="kvkk_accept"
+                checked={kvkkAccepted}
+                onCheckedChange={setKvkkAccepted}
+                disabled={loading}
+                className="mt-0.5"
+              />
+              <Label htmlFor="kvkk_accept" className="text-xs text-muted-foreground font-normal leading-relaxed cursor-pointer">
+                <a href="/kvkk" target="_blank" className="text-primary hover:underline">KVKK Aydınlatma Metni</a>'ni okudum,{' '}
+                <a href="/privacy" target="_blank" className="text-primary hover:underline">Gizlilik Politikası</a> ve{' '}
+                <a href="/terms" target="_blank" className="text-primary hover:underline">Kullanım Koşulları</a>'nı
+                kabul ediyorum.
+              </Label>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
+            <Button type="submit" className="w-full" disabled={loading || !turnstileToken || !kvkkAccepted}>
               {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
             </Button>
             <div className="relative w-full">
