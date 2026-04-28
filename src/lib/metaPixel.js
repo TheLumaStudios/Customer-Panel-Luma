@@ -1,8 +1,5 @@
 // Meta Pixel (Facebook Pixel) Event Helpers
-// Pixel ID: VITE_META_PIXEL_ID env değişkeninden alınır
-// Cookie consent kontrolü ile birlikte çalışır
-
-const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID
+const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1640464277232430'
 
 function fbq(...args) {
   if (typeof window.fbq !== 'function') return
