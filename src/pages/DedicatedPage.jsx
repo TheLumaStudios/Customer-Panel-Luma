@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import SEO from '@/components/seo/SEO'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Check, Cpu, HardDrive, MemoryStick, Server } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useProductCache } from '@/contexts/ProductCacheContext'
+import { viewContent } from '@/lib/metaPixel'
 
 const formatPrice = (price) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(price)
 const formatDisk = (gb) => gb === -1 ? 'Sınırsız' : `${gb} GB`
@@ -16,6 +18,10 @@ const getDiscountLabel = (index) => {
 
 export default function DedicatedPage() {
   const { packages } = useProductCache('dedicated')
+
+  useEffect(() => {
+    viewContent({ contentId: 'dedicated', contentName: 'Dedicated Sunucu', contentType: 'product_group', value: 3000 })
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-950">

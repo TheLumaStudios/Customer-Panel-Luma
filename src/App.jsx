@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth.jsx'
 import { CartProvider } from '@/contexts/CartContext'
 import { ProductCacheProvider } from '@/contexts/ProductCacheContext'
@@ -8,6 +9,16 @@ import { PublicRoute } from '@/components/auth/PublicRoute'
 import MainLayout from '@/components/layout/MainLayout'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import CookieConsent from '@/components/CookieConsent'
+import { pageView } from '@/lib/metaPixel'
+
+// Her route değişiminde Meta Pixel PageView gönderir
+function RouteTracker() {
+  const location = useLocation()
+  useEffect(() => {
+    pageView()
+  }, [location.pathname])
+  return null
+}
 
 import LandingPage from '@/pages/LandingPage'
 import FeaturesPage from '@/pages/FeaturesPage'
@@ -94,6 +105,7 @@ function App() {
         <ProductCacheProvider>
         <CustomerViewProvider>
         <CartProvider>
+          <RouteTracker />
           <Routes>
           {/* Landing pages - accessible to everyone */}
           <Route path="/" element={<LandingPage />} />

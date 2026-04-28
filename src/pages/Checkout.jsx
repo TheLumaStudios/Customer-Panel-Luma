@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCheckoutStore } from '@/stores/checkoutStore'
+import { initiateCheckout } from '@/lib/metaPixel'
 import { useProductCache } from '@/contexts/ProductCacheContext'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCreateSelfInvoice, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
@@ -11,6 +12,7 @@ import LandingFooter from '@/components/landing/LandingFooter'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ShoppingCart, Settings, FileText, CreditCard, Trash2, Check, ArrowRight, ArrowLeft, Loader2, Package, Monitor, Server, Shield, HardDrive, Globe, Building2, Copy, CheckCircle2 } from 'lucide-react'
 import PhoneInput from '@/components/PhoneInput'
 import Turnstile from '@/components/Turnstile'
@@ -227,6 +229,10 @@ export default function Checkout() {
   })
   const [guestLoading, setGuestLoading] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [checkoutConsents, setCheckoutConsents] = useState({
+    kvkk: false,
+    distance_sales: false,
+  })
 
   const stepIndex = STEPS.findIndex(s => s.key === store.step)
   const isPaying = createSelfInvoice.isPending || initializeIyzico.isPending
@@ -249,7 +255,17 @@ export default function Checkout() {
 
   const goNext = () => {
     const nextStep = STEPS[stepIndex + 1]
-    if (nextStep) store.setStep(nextStep.key)
+    if (nextStep) {
+      if (nextStep.key === 'payment') {
+        initiateCheckout({
+          contentIds: store.items.map(i => i.slug || i.id),
+          numItems: store.items.length,
+          value: store.getTotal?.() ?? store.getSubtotal?.(),
+          currency: 'TRY',
+        })
+      }
+      store.setStep(nextStep.key)
+    }
   }
 
   const goBack = () => {
@@ -1052,12 +1068,41 @@ export default function Checkout() {
               </div>
             )}
 
+            {/* KVKK & Sözleşme Onayları */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-white">Yasal Onaylar</h3>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="checkout_kvkk"
+                  checked={checkoutConsents.kvkk}
+                  onCheckedChange={(v) => setCheckoutConsents(p => ({ ...p, kvkk: v }))}
+                  className="mt-0.5"
+                />
+                <label htmlFor="checkout_kvkk" className="text-xs text-slate-400 leading-relaxed cursor-pointer">
+                  <a href="/kvkk" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline">KVKK Aydınlatma Metni</a>'ni ve{' '}
+                  <a href="/privacy" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline">Gizlilik Politikası</a>'nı okudum, kişisel verilerimin işlenmesini kabul ediyorum.
+                </label>
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="checkout_distance"
+                  checked={checkoutConsents.distance_sales}
+                  onCheckedChange={(v) => setCheckoutConsents(p => ({ ...p, distance_sales: v }))}
+                  className="mt-0.5"
+                />
+                <label htmlFor="checkout_distance" className="text-xs text-slate-400 leading-relaxed cursor-pointer">
+                  <a href="/distance-sales" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline">Mesafeli Satış Sözleşmesi</a>'ni ve{' '}
+                  <a href="/terms" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline">Kullanım Koşulları</a>'nı okudum ve kabul ediyorum.
+                </label>
+              </div>
+            </div>
+
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
               <p className="text-slate-400 mb-5">Ödeme yönteminizi seçin</p>
               <div className="space-y-3">
                 <button
                   onClick={handlePayment}
-                  disabled={isPaying || guestLoading}
+                  disabled={isPaying || guestLoading || !checkoutConsents.kvkk || !checkoutConsents.distance_sales}
                   className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all text-left disabled:opacity-50"
                 >
                   {(isPaying || guestLoading) ? <Loader2 className="h-5 w-5 text-indigo-400 animate-spin" /> : <CreditCard className="h-5 w-5 text-indigo-400" />}
@@ -1078,7 +1123,7 @@ export default function Checkout() {
                     }
                     setBankModalOpen(true)
                   }}
-                  disabled={guestLoading}
+                  disabled={guestLoading || !checkoutConsents.kvkk || !checkoutConsents.distance_sales}
                   className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all text-left disabled:opacity-50"
                 >
                   {guestLoading ? <Loader2 className="h-5 w-5 text-emerald-400 animate-spin" /> : <Building2 className="h-5 w-5 text-emerald-400" />}
