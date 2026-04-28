@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Wallet as WalletIcon, CreditCard, Loader2, ArrowDownCircle, ArrowUpCircle, Gift, RefreshCw, ArrowRight, Shield, Percent } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { formatDate } from '@/lib/utils'
-import { trackWalletTopUp } from '@/lib/gtag'
+import { trackWalletTopUp } from '@/lib/analytics'
 import IyzicoPaymentDialog from '@/components/payments/IyzicoPaymentDialog'
 
 const QUICK_AMOUNTS = [100, 250, 500, 1000, 2500, 5000]

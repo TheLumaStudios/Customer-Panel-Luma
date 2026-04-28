@@ -175,7 +175,76 @@ export default function KVKK() {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-white mb-3">8. Başvuru Yöntemi</h2>
+              <h2 className="text-xl font-semibold text-white mb-3">8. Veri İhlali Bildirim Politikası</h2>
+              <p className="text-slate-400 mb-3">
+                KVKK'nın 12. maddesi kapsamında, kişisel veri ihlali tespit edilmesi halinde aşağıdaki prosedür uygulanır:
+              </p>
+              <div className="space-y-3">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-slate-200 mb-2">8.1 Bildirim Süreci</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-400">
+                    <li>Veri ihlali tespit edildiğinde derhal iç soruşturma başlatılır</li>
+                    <li>İhlalin boyutu, etkilenen veri kategorileri ve kişi sayısı belirlenir</li>
+                    <li><strong className="text-slate-300">KVK Kurulu'na en geç 72 saat içinde</strong> yazılı bildirim yapılır</li>
+                    <li>İhlalden etkilenen kişiler en kısa sürede bilgilendirilir</li>
+                  </ul>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-slate-200 mb-2">8.2 Bildirim İçeriği</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-400">
+                    <li>İhlalin ne zaman gerçekleştiği ve tespit edildiği</li>
+                    <li>Etkilenen kişisel veri kategorileri (kimlik, iletişim, finansal vb.)</li>
+                    <li>İhlalin muhtemel sonuçları ve olası zararlar</li>
+                    <li>İhlalin etkilerinin azaltılması için alınan ve önerilen tedbirler</li>
+                    <li>İlgili kişilerin başvurabileceği iletişim bilgileri</li>
+                  </ul>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-slate-200 mb-2">8.3 Teknik ve İdari Tedbirler</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-400">
+                    <li>SSL/TLS ile şifrelenmiş veri iletimi</li>
+                    <li>Veritabanı şifreleme (encryption at rest)</li>
+                    <li>Erişim kontrol listeleri (Row-Level Security)</li>
+                    <li>Değiştirilemez denetim günlükleri (audit logs)</li>
+                    <li>Düzenli güvenlik taramaları ve penetrasyon testleri</li>
+                    <li>Çalışan eğitim ve farkındalık programları</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-3">9. Alt İşleyici (Veri İşleyen) Listesi</h2>
+              <p className="text-slate-400 mb-3">
+                Kişisel verileriniz, hizmet sunumu için aşağıdaki alt işleyiciler tarafından işlenmektedir:
+              </p>
+              <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-800/40">
+                      <th className="text-left py-3 px-4 text-slate-300 font-semibold">Alt İşleyici</th>
+                      <th className="text-left py-3 px-4 text-slate-300 font-semibold">Amaç</th>
+                      <th className="text-left py-3 px-4 text-slate-300 font-semibold">Konum</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-400">
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">Supabase (Pty Ltd)</td><td className="py-3 px-4">Veritabanı, kimlik doğrulama, dosya depolama</td><td className="py-3 px-4">ABD / AB (AWS)</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">iyzico (iyzi Ödeme A.Ş.)</td><td className="py-3 px-4">Ödeme işleme, kart tokenizasyonu</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">AkÖDE A.Ş. (Tosla)</td><td className="py-3 px-4">Ödeme işleme</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">Garanti Ödeme A.Ş. (Tami)</td><td className="py-3 px-4">Ödeme işleme</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">Cloudflare, Inc.</td><td className="py-3 px-4">DNS yönetimi, DDoS koruması, CDN</td><td className="py-3 px-4">ABD / Global</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">VatanSMS (Vatan Bilişim)</td><td className="py-3 px-4">SMS bildirim ve doğrulama</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr><td className="py-3 px-4">Google LLC</td><td className="py-3 px-4">Analitik ve reklam dönüşüm takibi (çerez onayı ile)</td><td className="py-3 px-4">ABD</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-slate-500 text-sm mt-3">
+                Yurt dışında bulunan alt işleyicilere veri aktarımı, KVKK md. 9 kapsamında yeterli koruma tedbirleri alınarak ve gerekli taahhütler sağlanarak gerçekleştirilmektedir.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-3">10. Başvuru Yöntemi</h2>
               <p className="text-slate-400 mb-3">
                 Yukarıda belirtilen haklarınızı kullanmak için aşağıdaki yöntemlerden biriyle bize başvurabilirsiniz:
               </p>

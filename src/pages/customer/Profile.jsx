@@ -2,14 +2,23 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useUpdateProfile, useChangePassword } from '@/hooks/useProfile'
 import { useCustomers } from '@/hooks/useCustomers'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import AddressManager from '@/components/shared/AddressManager'
 import PasswordStrength from '@/components/shared/PasswordStrength'
-import { User, Mail, Phone, Building2, Lock, Loader2 } from 'lucide-react'
+import { User, Mail, Phone, Building2, Lock, Loader2, Download, Trash2, Shield } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
@@ -326,6 +335,219 @@ export default function Profile() {
       {/* Address Management */}
       <Separator className="my-8" />
       <AddressManager customerId={profile?.id} />
+
+      {/* KVKK Data Rights */}
+      <Separator className="my-8" />
+      <KVKKDataRights profile={profile} currentCustomer={currentCustomer} />
+    </div>
+  )
+}
+
+function KVKKDataRights({ profile, currentCustomer }) {
+  const [exporting, setExporting] = useState(false)
+  const [deleteRequesting, setDeleteRequesting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  const handleExportData = async () => {
+    setExporting(true)
+    try {
+      const exportData = {
+        _meta: {
+          exported_at: new Date().toISOString(),
+          format: 'KVKK md. 11 - Kisisel Veri Raporu',
+          data_controller: 'Luma Yazilim - Enes POYRAZ',
+        },
+        profile: {
+          id: profile?.id,
+          email: profile?.email,
+          full_name: profile?.full_name,
+          phone: profile?.phone,
+          company_name: profile?.company_name,
+          role: profile?.role,
+          created_at: profile?.created_at,
+        },
+        customer: currentCustomer ? {
+          customer_code: currentCustomer.customer_code,
+          tc_no: currentCustomer.tc_no ? '***' + currentCustomer.tc_no.slice(-4) : null,
+          vkn: currentCustomer.vkn,
+          tax_office: currentCustomer.tax_office,
+          status: currentCustomer.status,
+        } : null,
+      }
+
+      // Fetch related data
+      const [domains, hosting, invoices, addresses, tickets] = await Promise.all([
+        supabase.from('domains').select('domain_name, status, registration_date, expiry_date').eq('customer_id', currentCustomer?.id).then(r => r.data),
+        supabase.from('hosting_accounts').select('domain, package_name, status, start_date, end_date').eq('customer_id', currentCustomer?.id).then(r => r.data),
+        supabase.from('invoices').select('invoice_number, amount, status, due_date, created_at').eq('customer_id', currentCustomer?.id).then(r => r.data),
+        supabase.from('customer_addresses').select('address_type, city, country').eq('customer_id', currentCustomer?.id || profile?.id).then(r => r.data),
+        supabase.from('tickets').select('subject, status, priority, created_at').eq('customer_id', currentCustomer?.id || profile?.id).then(r => r.data),
+      ])
+
+      exportData.domains = domains || []
+      exportData.hosting = hosting || []
+      exportData.invoices = (invoices || []).map(inv => ({
+        ...inv,
+        amount: inv.amount ? `${inv.amount} TRY` : null,
+      }))
+      exportData.addresses = addresses || []
+      exportData.tickets = (tickets || []).map(t => ({
+        subject: t.subject,
+        status: t.status,
+        created_at: t.created_at,
+      }))
+
+      // Download as JSON
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kvkk-veri-raporu-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      toast.success('Verileriniz indirildi', {
+        description: 'KVKK md. 11 kapsaminda kisisel veri raporunuz hazirlanmistir.',
+      })
+    } catch (error) {
+      console.error('Data export failed:', error)
+      toast.error('Veri indirme basarisiz', {
+        description: 'Lutfen daha sonra tekrar deneyin veya destek talebi olusturun.',
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleDeleteRequest = async () => {
+    setDeleteRequesting(true)
+    try {
+      // Create a support ticket for account deletion
+      const { error } = await supabase.from('tickets').insert({
+        customer_id: currentCustomer?.id || profile?.id,
+        subject: 'KVKK - Hesap Silme Talebi',
+        message: `KVKK md. 7 ve md. 11/e kapsaminda hesabimin ve tum kisisel verilerimin silinmesini talep ediyorum.\n\nTalep eden: ${profile?.full_name}\nE-posta: ${profile?.email}\nTarih: ${new Date().toLocaleDateString('tr-TR')}`,
+        priority: 'high',
+        status: 'open',
+        department: 'billing',
+      })
+
+      if (error) throw error
+
+      toast.success('Silme talebiniz alindi', {
+        description: 'KVKK kapsaminda talebiniz 30 gun icinde degerlendirilecektir. Destek taleplerinden takip edebilirsiniz.',
+      })
+    } catch (error) {
+      console.error('Delete request failed:', error)
+      toast.error('Talep gonderilemedi', {
+        description: 'Lutfen info@lumayazilim.com adresine e-posta gonderiniz.',
+      })
+    } finally {
+      setDeleteRequesting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">KVKK Veri Haklarim</h2>
+        <p className="text-sm text-muted-foreground">
+          6698 sayili KVKK md. 11 kapsamindaki haklarinizi kullanabilirsiniz.{' '}
+          <a href="/kvkk" className="text-primary hover:underline" target="_blank">
+            Aydinlatma Metni
+          </a>
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Export Data */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Download className="h-4 w-4" />
+              Verilerimi Indir
+            </CardTitle>
+            <CardDescription>
+              Islenen kisisel verilerinizin bir kopyasini JSON formatinda indirin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleExportData}
+              disabled={exporting}
+              variant="outline"
+              className="w-full"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Hazirlaniyor...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Veri Raporunu Indir
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Delete Account */}
+        <Card className="rounded-xl border-destructive/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Hesabimi Sil
+            </CardTitle>
+            <CardDescription>
+              KVKK md. 7 kapsaminda tum verilerinizin silinmesini talep edin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="destructive" className="w-full" onClick={() => setDeleteDialogOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Silme Talebi Olustur
+            </Button>
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Hesap silme talebi</DialogTitle>
+                  <DialogDescription className="space-y-2">
+                    <p>Bu islem geri alinamaz. Hesabinizin silinmesi ile:</p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li>Tum kisisel verileriniz kalici olarak silinecektir</li>
+                      <li>Aktif hizmetleriniz (hosting, domain vb.) sonlandirilacaktir</li>
+                      <li>Yasal zorunluluk geregi bazi veriler saklama suresi sonuna kadar tutulabilir</li>
+                    </ul>
+                    <p className="text-sm font-medium mt-2">
+                      Talebiniz KVKK kapsaminda 30 gun icinde degerlendirilecektir.
+                    </p>
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Vazgec</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      await handleDeleteRequest()
+                      setDeleteDialogOpen(false)
+                    }}
+                    disabled={deleteRequesting}
+                  >
+                    {deleteRequesting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Talebi Gonder
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

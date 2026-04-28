@@ -156,67 +156,30 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
       throw new Error('Çalışanın zaten giriş hesabı var')
     }
 
-    // Generate random password
-    const password = Math.random().toString(36).slice(-8) +
-                     Math.random().toString(36).slice(-8).toUpperCase() + '123!'
-
-// Create admin client with service role key
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-    )
-
-    // Create auth user
-    const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: employee.email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: employee.full_name,
-        role: 'employee'
-      }
-    })
-
-    if (createError) {
-      console.error('Auth creation error:', createError)
-      throw new Error(`Failed to create auth user: ${createError.message}`)
-    }
-
-    // Create profile
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: authUser.user.id,
+    // Call edge function (service role key is server-side only)
+    const { data, error } = await supabase.functions.invoke('employee-create-auth', {
+      body: {
+        employee_id,
         email: employee.email,
         full_name: employee.full_name,
-        role: 'employee',
-      })
+      },
+    })
 
-    if (profileError) {
-      console.error('Profile creation error:', profileError)
-      // Rollback: delete auth user
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
-      throw new Error(`Failed to create profile: ${profileError.message}`)
+    if (error) {
+      console.error('Edge function error:', error)
+      throw new Error(error.message || 'Hesap oluşturulamadı')
     }
 
-    // Update employee with profile_id
-    const { error: updateError } = await supabase
-      .from('employees')
-      .update({ profile_id: authUser.user.id })
-      .eq('id', employee_id)
-
-    if (updateError) {
-      console.error('Employee link error:', updateError)
-      throw new Error(`Failed to link employee: ${updateError.message}`)
+    if (!data?.success) {
+      throw new Error(data?.error || 'Hesap oluşturulamadı')
     }
 
     return {
       success: true,
       email: employee.email,
       full_name: employee.full_name,
-      password,
-      profile_id: authUser.user.id,
+      password: data.password,
+      profile_id: data.profile_id,
       message: 'Employee account created successfully'
     }
   } catch (error) {
