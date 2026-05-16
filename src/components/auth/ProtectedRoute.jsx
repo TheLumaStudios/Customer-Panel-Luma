@@ -1,11 +1,12 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useResellerAccount } from '@/hooks/useResellerAccount'
 
-export const ProtectedRoute = ({ children, requiredRole }) => {
+export const ProtectedRoute = ({ children, requiredRole, skipResellerRedirect = false }) => {
   const { user, profile, loading } = useAuth()
+  const { resellerAccount, loading: resellerLoading } = useResellerAccount()
 
-  // Debug logging
-  if (loading) {
+  if (loading || (profile?.role === 'customer' && resellerLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -23,7 +24,10 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />
   }
 
-  // Profile may still be loading — allow access, fetchProfile always provides a fallback
+  // Bayi hesabı varsa ve normal müşteri paneline girmeye çalışıyorsa → reseller dashboard'a yönlendir
+  if (!skipResellerRedirect && resellerAccount && requiredRole === 'customer') {
+    return <Navigate to="/reseller/dashboard" replace />
+  }
 
   if (requiredRole && profile?.role && profile.role !== requiredRole) {
     let redirectPath = '/dashboard'

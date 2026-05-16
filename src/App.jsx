@@ -99,6 +99,7 @@ import NotificationPreferences from '@/pages/customer/NotificationPreferences'
 import WalletRefunds from '@/pages/admin/WalletRefunds'
 import Integrations from '@/pages/admin/Integrations'
 import Resellers from '@/pages/admin/Resellers'
+import ResellerDashboard from '@/pages/reseller/Dashboard'
 
 function App() {
   return (
@@ -278,6 +279,19 @@ function App() {
           </Route>
           <Route path="/notifications" element={<ProtectedRoute requiredRole="customer"><MainLayout /></ProtectedRoute>}>
             <Route index element={<NotificationPreferences />} />
+          </Route>
+
+          {/* Reseller routes — resellerRedirect=false ile döngü önlenir */}
+          <Route
+            path="/reseller/*"
+            element={
+              <ProtectedRoute requiredRole="customer" skipResellerRedirect>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/reseller/dashboard" replace />} />
+            <Route path="dashboard" element={<ResellerDashboard />} />
           </Route>
 
           {/* Public routes */}
