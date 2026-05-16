@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useReseller } from '@/contexts/ResellerContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState('')
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const { reseller } = useReseller() || {}
 
   const handleGitHubLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -84,9 +86,24 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          {reseller ? (
+            <div className="flex flex-col items-center gap-2 mb-1">
+              {reseller.brand_logo_url
+                ? <img src={reseller.brand_logo_url} alt={reseller.brand_name || reseller.company_name} className="h-10 object-contain" />
+                : <span className="text-xl font-bold">{reseller.brand_name || reseller.company_name}</span>
+              }
+              <p className="text-xs text-muted-foreground">Müşteri Paneli</p>
+            </div>
+          ) : (
+            <div className="flex justify-center mb-1">
+              <img src="/luma.png" alt="Luma" className="h-8" />
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold text-center">Giriş Yap</CardTitle>
           <CardDescription className="text-center">
-            Hesabınıza giriş yapmak için bilgilerinizi girin
+            {reseller
+              ? `${reseller.brand_name || reseller.company_name} paneline giriş yapın`
+              : 'Hesabınıza giriş yapmak için bilgilerinizi girin'}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

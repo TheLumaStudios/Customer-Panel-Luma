@@ -5,6 +5,7 @@ import { CartProvider } from '@/contexts/CartContext'
 import { ProductCacheProvider } from '@/contexts/ProductCacheContext'
 import { CustomerViewProvider } from '@/contexts/CustomerViewContext'
 import { DevModeProvider } from '@/contexts/DevModeContext'
+import { ResellerProvider } from '@/contexts/ResellerContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { PublicRoute } from '@/components/auth/PublicRoute'
 import MainLayout from '@/components/layout/MainLayout'
@@ -103,6 +104,7 @@ function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
+      <ResellerProvider>
       <AuthProvider>
         <DevModeProvider>
         <ProductCacheProvider>
@@ -291,6 +293,7 @@ function App() {
         </ProductCacheProvider>
         </DevModeProvider>
       </AuthProvider>
+      </ResellerProvider>
     </BrowserRouter>
     </ErrorBoundary>
   )

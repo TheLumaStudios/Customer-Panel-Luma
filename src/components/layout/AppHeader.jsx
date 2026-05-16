@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCart } from '@/contexts/CartContext'
 import { useCustomerView } from '@/contexts/CustomerViewContext'
 import { useDevMode } from '@/contexts/DevModeContext'
+import { useReseller } from '@/contexts/ResellerContext'
 import { useExchangeRate } from '@/hooks/useCurrency'
 import { convertUsdToTry } from '@/lib/api/currency'
 import { cn } from '@/lib/utils'
@@ -182,6 +183,7 @@ export default function AppHeader() {
   const isCustomer = role === 'customer'
   const nav = role === 'admin' ? adminNav : role === 'employee' ? employeeNav : customerNav
   const { devMode, toggle: toggleDevMode } = useDevMode()
+  const { reseller } = useReseller() || {}
 
   const isActive = (item) => {
     if (item.path) {
@@ -219,7 +221,12 @@ export default function AppHeader() {
         <div className="flex items-center h-16 px-6 max-w-[1600px] mx-auto gap-6">
           {/* Sol: Logo */}
           <Link to={role === 'admin' ? '/admin/dashboard' : role === 'employee' ? '/employee/dashboard' : '/dashboard'} className="flex items-center flex-shrink-0">
-            <img src="/luma.png" alt="Luma" className="h-8" />
+            {reseller?.brand_logo_url
+              ? <img src={reseller.brand_logo_url} alt={reseller.brand_name || reseller.company_name} className="h-8 object-contain" />
+              : reseller?.brand_name
+                ? <span className="text-lg font-bold">{reseller.brand_name}</span>
+                : <img src="/luma.png" alt="Luma" className="h-8" />
+            }
           </Link>
 
           {/* Orta: Arama - geniş, ortalı */}

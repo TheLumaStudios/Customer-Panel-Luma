@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { useReseller } from '@/contexts/ResellerContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,6 +33,7 @@ export default function RegisterPage() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { reseller } = useReseller() || {}
 
   useEffect(() => {
     const ref = searchParams.get('ref')
@@ -126,6 +128,20 @@ export default function RegisterPage() {
           console.error('Referral link error:', refErr)
         }
       }
+      // Bayi üzerinden kayıt olduysa müşteriyi reseller'a bağla
+      if (reseller?.id && data?.user?.id) {
+        try {
+          // Customers kaydı oluşana kadar biraz bekle (trigger gecikmesi)
+          await new Promise(r => setTimeout(r, 1500))
+          await supabase
+            .from('customers')
+            .update({ reseller_id: reseller.id })
+            .eq('profile_id', data.user.id)
+        } catch (resErr) {
+          console.error('Reseller link error:', resErr)
+        }
+      }
+
       trackSignUp('email')
       pixelCompleteRegistration()
       const [firstName, ...rest] = (formData.full_name || '').split(' ')
@@ -143,9 +159,22 @@ export default function RegisterPage() {
     <div className="flex items-center justify-center min-h-screen bg-background py-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          {reseller ? (
+            <div className="flex flex-col items-center gap-2 mb-1">
+              {reseller.brand_logo_url
+                ? <img src={reseller.brand_logo_url} alt={reseller.brand_name || reseller.company_name} className="h-10 object-contain" />
+                : <span className="text-xl font-bold">{reseller.brand_name || reseller.company_name}</span>
+              }
+              <p className="text-xs text-muted-foreground">Müşteri Paneli</p>
+            </div>
+          ) : (
+            <div className="flex justify-center mb-1">
+              <img src="/luma.png" alt="Luma" className="h-8" />
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold text-center">Kayıt Ol</CardTitle>
           <CardDescription className="text-center">
-            Yeni bir hesap oluşturun
+            {reseller ? `${reseller.brand_name || reseller.company_name} müşteri paneline üye olun` : 'Yeni bir hesap oluşturun'}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
