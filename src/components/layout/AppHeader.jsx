@@ -59,6 +59,7 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { toast } from 'sonner'
 
 // ─── Kategorize edilmiş menüler ───
 
@@ -374,7 +375,14 @@ export default function AppHeader() {
             {/* DevMode Toggle — sadece müşteri panelinde */}
             {isCustomer && (
               <button
-                onClick={toggleDevMode}
+                onClick={() => {
+                  toggleDevMode()
+                  toast(devMode ? 'Geliştirici Modu kapatıldı' : 'Geliştirici Modu açıldı', {
+                    description: devMode ? undefined : 'API endpoint\'leri ve curl örnekleri artık görünür',
+                    icon: <Terminal className="h-4 w-4 text-violet-600" />,
+                    duration: 2500,
+                  })
+                }}
                 title={devMode ? 'Geliştirici Modu: AÇIK (Ctrl+Shift+D)' : 'Geliştirici Modu: KAPALI (Ctrl+Shift+D)'}
                 className={cn(
                   'h-9 w-9 flex items-center justify-center rounded-full transition-colors',

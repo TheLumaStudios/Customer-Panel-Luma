@@ -6,10 +6,12 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { supabase } from '@/lib/supabase'
-import { X, Bell } from 'lucide-react'
+import { X, Bell, Terminal } from 'lucide-react'
 import { GhostBanner } from '@/components/shared/GhostBanner'
 import IdCardUploadGate from '@/components/kyc/IdCardUploadGate'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useDevMode } from '@/contexts/DevModeContext'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const announcementColors = {
   info: 'bg-blue-50 border-blue-200 text-blue-800',
@@ -24,6 +26,9 @@ export default function MainLayout() {
   const [dismissedIds, setDismissedIds] = useState([])
   const [pushBannerDismissed, setPushBannerDismissed] = useState(() => localStorage.getItem('luma-push-dismissed') === '1')
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: pushSubscribe } = usePushNotifications()
+  const { devMode, toggle: toggleDevMode } = useDevMode()
+  const { profile } = useAuth()
+  const isCustomer = profile?.role === 'customer'
 
   useKeyboardShortcuts({
     onHelpOpen: () => setHelpOpen(true)
@@ -98,6 +103,23 @@ export default function MainLayout() {
               <X className="h-4 w-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* DevMode Banner — sadece müşteri panelinde */}
+      {isCustomer && devMode && (
+        <div className="flex items-center justify-between px-5 py-2 border-b bg-violet-50 border-violet-300 text-sm text-violet-900">
+          <div className="flex items-center gap-2">
+            <Terminal className="h-4 w-4 text-violet-600" />
+            <span className="font-medium">Geliştirici Modu aktif</span>
+            <span className="text-violet-600 text-xs">— Sayfalarda API endpoint'leri ve curl örnekleri görünür. Kapatmak için tekrar tıkla veya Ctrl+Shift+D.</span>
+          </div>
+          <button
+            onClick={toggleDevMode}
+            className="p-1 rounded hover:bg-violet-100 transition-colors flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
