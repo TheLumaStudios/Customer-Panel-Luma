@@ -1,316 +1,229 @@
-import { Check, Shield, HardDrive, Lock, Zap, Database, Server } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight, Zap, Shield, Globe } from 'lucide-react'
+import TiltCard from '@/components/landing/TiltCard'
+import ScrollReveal from '@/components/landing/ScrollReveal'
+
+// ── Mini demo: speed comparison bars ────────────────────────
+function SpeedDemo() {
+  const [go, setGo] = useState(false)
+
+  useEffect(() => {
+    // restart every 5s
+    const run = () => {
+      setGo(false)
+      const t = setTimeout(() => setGo(true), 300)
+      return t
+    }
+    let timer = run()
+    const loop = setInterval(() => {
+      clearTimeout(timer)
+      timer = run()
+    }, 5000)
+    return () => { clearTimeout(timer); clearInterval(loop) }
+  }, [])
+
+  return (
+    <div className="mt-5 mb-6 space-y-2.5 select-none">
+      {/* Competitor */}
+      <div>
+        <div className="flex justify-between text-[10px] mb-1">
+          <span className="text-white/30">Rakip (SATA)</span>
+          <span className="text-white/30">180ms</span>
+        </div>
+        <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-red-400/40 rounded-full transition-all duration-[2200ms] ease-out"
+            style={{ width: go ? '88%' : '0%' }}
+          />
+        </div>
+      </div>
+      {/* Luma */}
+      <div>
+        <div className="flex justify-between text-[10px] mb-1">
+          <span className="text-amber-400">Luma (NVMe Gen4)</span>
+          <span className="text-amber-400">45ms</span>
+        </div>
+        <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-[480ms] ease-out"
+            style={{
+              width: go ? '25%' : '0%',
+              background: 'linear-gradient(90deg,#f59e0b,#fbbf24)',
+              boxShadow: go ? '0 0 6px rgba(245,158,11,0.6)' : undefined,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Mini demo: live threat counter ───────────────────────────
+function ThreatDemo() {
+  const [count, setCount] = useState(1247)
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setCount(c => c + Math.floor(Math.random() * 6 + 1))
+    }, 700)
+    return () => clearInterval(iv)
+  }, [])
+
+  return (
+    <div className="mt-5 mb-6 flex items-center justify-between bg-red-500/[0.05] border border-red-500/10 rounded-lg px-4 py-3 select-none">
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+        <span className="text-[11px] text-white/35">Engellenen saldırı</span>
+      </div>
+      <span className="text-sm font-bold text-[#00f2ff] tabular-nums">
+        {count.toLocaleString('tr')}
+      </span>
+    </div>
+  )
+}
+
+// ── Mini demo: pulsing CDN nodes ─────────────────────────────
+function NetworkDemo() {
+  return (
+    <div className="mt-5 mb-6 flex items-center justify-around select-none">
+      {[
+        { city: 'İstanbul', delay: '0s', color: '#00f2ff' },
+        { city: 'Frankfurt', delay: '0.5s', color: '#a78bfa' },
+        { city: 'Singapore', delay: '1s', color: '#34d399' },
+      ].map(({ city, delay, color }) => (
+        <div key={city} className="flex flex-col items-center gap-2">
+          <div className="relative flex items-center justify-center">
+            {/* Ripple rings */}
+            <div
+              className="absolute h-6 w-6 rounded-full animate-ping opacity-30"
+              style={{ backgroundColor: color, animationDelay: delay, animationDuration: '2s' }}
+            />
+            <div
+              className="absolute h-4 w-4 rounded-full animate-ping opacity-20"
+              style={{ backgroundColor: color, animationDelay: delay, animationDuration: '2s' }}
+            />
+            {/* Core dot */}
+            <div
+              className="relative h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}aa` }}
+            />
+          </div>
+          <span className="text-[9px] text-white/25">{city}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+
+const pillars = [
+  {
+    icon: Zap,
+    label: 'PERFORMANS ÇEKİRDEĞİ',
+    title: 'Hız & Performans',
+    description: 'NVMe Gen4 SSD diskler ve LiteSpeed web sunucusu ile rakiplerinizi geride bırakın.',
+    demo: SpeedDemo,
+    href: '/vds',
+    iconColor: 'text-amber-400',
+    iconBg: 'bg-amber-400/10 border-amber-400/20',
+    accentHex: '#f59e0b',
+    hoverBorder: 'hover:border-amber-400/25',
+    linkColor: 'text-amber-400 hover:text-amber-300',
+  },
+  {
+    icon: Shield,
+    label: 'GÜVENLİK PROTOKOLÜ',
+    title: 'Kurumsal Güvenlik',
+    description: 'Çok katmanlı DDoS koruması, otomatik SSL ve gelişmiş firewall kuralları.',
+    demo: ThreatDemo,
+    href: '/vps',
+    iconColor: 'text-[#00f2ff]',
+    iconBg: 'bg-[#00f2ff]/10 border-[#00f2ff]/20',
+    accentHex: '#00f2ff',
+    hoverBorder: 'hover:border-[#00f2ff]/25',
+    linkColor: 'text-[#00f2ff] hover:text-cyan-300',
+    featured: true,
+  },
+  {
+    icon: Globe,
+    label: 'GLOBAL ALTYAPI',
+    title: 'Global Ağ',
+    description: 'Cloudflare CDN entegrasyonu ve Türkiye lokasyon altyapısı ile dünya genelinde hız.',
+    demo: NetworkDemo,
+    href: '/linux-hosting',
+    iconColor: 'text-violet-400',
+    iconBg: 'bg-violet-400/10 border-violet-400/20',
+    accentHex: '#a78bfa',
+    hoverBorder: 'hover:border-violet-400/25',
+    linkColor: 'text-violet-400 hover:text-violet-300',
+  },
+]
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-24 bg-slate-950">
+    <section className="relative py-24">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gradient-to-b from-transparent to-white/[0.06]" />
+
       <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* All-Flash NVMe SSD Storage */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
-          <div>
-            <div className="inline-block px-3 py-1 bg-white/5 border border-white/10 text-indigo-400 text-sm font-semibold rounded-full mb-4">
-              DEPOLAMA
-            </div>
-            <h3 className="text-3xl font-bold text-white mb-4">Tamamen NVMe SSD Depolama</h3>
-            <p className="text-slate-400 mb-6">
-              Legacy SATA SSD'ler darboğaz yaratır. Altyapımız native NVMe depolama protokollerini kullanarak geleneksel hosting ortamlarından 5 kat daha hızlı yanıt süreleri sunar.
+        <ScrollReveal>
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold tracking-[0.3em] text-white/25 uppercase mb-3">
+              Altyapı Temelleri
             </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Ağır yükler için veritabanı performansını garanti edin</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Gen4 NVMe ile dosya işlemlerinde %400 hız artışı</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Dedicated caching katmanları ile ultra-hız</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Her alanda proaktif disk sağlığı izleme</span>
-              </li>
-            </ul>
-            <Button className="bg-indigo-600 hover:bg-indigo-500 text-white" asChild>
-              <Link to="/register">Hemen Başla</Link>
-            </Button>
+            <h2 className="text-3xl lg:text-4xl font-bold text-white">
+              Üç Sütun,{' '}
+              <span className="bg-gradient-to-r from-[#00f2ff] to-cyan-300 bg-clip-text text-transparent">
+                Sonsuz Güç
+              </span>
+            </h2>
           </div>
-          <div className="relative">
-            <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-900">
-              <img
-                src="https://images.unsplash.com/photo-1597852074816-d933c7d2b988?w=800&q=80"
-                alt="NVMe Storage"
-                className="w-full h-[400px] object-cover"
-              />
-            </div>
-            <div className="absolute top-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
-              5x Daha Hızlı
-            </div>
-          </div>
-        </div>
+        </ScrollReveal>
 
-        {/* Data-Driven Performance */}
-        <div className="bg-slate-900 rounded-3xl p-8 md:p-12 mb-24">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-white mb-3">Veriye Dayalı Performans</h3>
-            <p className="text-slate-400">
-              Gerçek dünya testlerinde %42 daha hızlı yanıt süreleri. Sektör standartlarına karşı ortalama yanıt sürelerini karşılaştırın.
-            </p>
-          </div>
+        <div className="grid lg:grid-cols-3 gap-5">
+          {pillars.map((p, i) => {
+            const Demo = p.demo
+            return (
+              <ScrollReveal key={p.label} delay={i * 100}>
+                <TiltCard>
+                  <div
+                    style={p.featured ? {
+                      boxShadow: '0 0 40px rgba(0,242,255,0.04), inset 0 1px 0 rgba(0,242,255,0.08)',
+                    } : undefined}
+                    className={`group relative bg-white/[0.03] backdrop-blur-sm border rounded-2xl p-8 transition-all duration-300
+                      ${p.featured ? 'border-[#00f2ff]/15' : 'border-white/[0.06]'}
+                      ${p.hoverBorder} hover:bg-white/[0.05]`}
+                  >
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{ background: `linear-gradient(90deg,transparent,${p.accentHex}50,transparent)` }}
+                    />
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Chart Placeholder */}
-            <div className="bg-slate-800/40 rounded-2xl p-8 border border-slate-700/50">
-              <h4 className="font-semibold text-white mb-6">Yanıt Süresi Karşılaştırması</h4>
-              <p className="text-xs text-slate-400 mb-4">Ortalama sunucu yanıt süresi (TTFB) testinde 6 global region</p>
-
-              {/* Simple Bar Chart */}
-              <div className="space-y-4">
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <div className="h-24 bg-indigo-600 rounded-t flex items-end justify-center pb-2">
-                      <span className="text-xs font-semibold text-white">45ms</span>
+                    <div className={`h-12 w-12 rounded-xl ${p.iconBg} border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                      <p.icon className={`h-6 w-6 ${p.iconColor}`} />
                     </div>
-                    <p className="text-xs text-center mt-2 text-slate-400">Hostify</p>
+
+                    <p className="text-[10px] font-semibold tracking-[0.25em] text-white/25 uppercase mb-3">
+                      {p.label}
+                    </p>
+                    <h3 className="text-xl font-bold text-white mb-2">{p.title}</h3>
+                    <p className="text-sm text-white/45 leading-relaxed">{p.description}</p>
+
+                    <Demo />
+
+                    <Link
+                      to={p.href}
+                      className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${p.linkColor}`}
+                    >
+                      Keşfet
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                    </Link>
                   </div>
-                  <div className="flex-1">
-                    <div className="h-32 bg-slate-600/30 rounded-t flex items-end justify-center pb-2">
-                      <span className="text-xs font-semibold text-slate-300">78ms</span>
-                    </div>
-                    <p className="text-xs text-center mt-2 text-slate-400">Rakip A</p>
-                  </div>
-                  <div className="flex-1">
-                    <div className="h-28 bg-slate-600/30 rounded-t flex items-end justify-center pb-2">
-                      <span className="text-xs font-semibold text-slate-300">65ms</span>
-                    </div>
-                    <p className="text-xs text-center mt-2 text-slate-400">Rakip B</p>
-                  </div>
-                  <div className="flex-1">
-                    <div className="h-32 bg-slate-600/30 rounded-t flex items-end justify-center pb-2">
-                      <span className="text-xs font-semibold text-slate-300">82ms</span>
-                    </div>
-                    <p className="text-xs text-center mt-2 text-slate-400">Rakip C</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Metrics */}
-            <div className="space-y-8">
-              <div className="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2">
-                  <Zap className="h-5 w-5 text-indigo-400" />
-                  <span className="text-sm font-medium text-slate-400">HIZIMIZ AVANTAJI</span>
-                </div>
-                <div className="text-4xl font-bold text-white mb-1">%42 Daha Hızlı</div>
-                <p className="text-sm text-slate-400">
-                  Ortalama sayfa yükleme süresi en yakın rakibe göre %3 daha hızlı
-                </p>
-              </div>
-
-              <div className="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2">
-                  <Server className="h-5 w-5 text-indigo-400" />
-                  <span className="text-sm font-medium text-slate-400">24/7 UPTIME</span>
-                </div>
-                <div className="text-4xl font-bold text-white mb-1">99.99%</div>
-                <p className="text-sm text-slate-400">
-                  Uptime SLA ile garantili Hizmet Seviyesi Anlaşması (SLA)
-                </p>
-              </div>
-
-              <div className="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2">
-                  <Database className="h-5 w-5 text-indigo-400" />
-                  <span className="text-sm font-medium text-slate-400">PERFORMANS</span>
-                </div>
-                <div className="text-4xl font-bold text-white mb-1">12 Puan</div>
-                <p className="text-sm text-slate-400">
-                  GTmetrix üzerinde ortalama A skoru 6 benchmark testi
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* LiteSpeed Web Server */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
-          <div className="relative order-2 lg:order-1">
-            <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 p-12">
-              <img
-                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80"
-                alt="LiteSpeed"
-                className="w-full h-[300px] object-cover rounded-xl opacity-80"
-              />
-            </div>
-          </div>
-          <div className="order-1 lg:order-2">
-            <div className="inline-block px-3 py-1 bg-white/5 border border-white/10 text-indigo-400 text-sm font-semibold rounded-full mb-4">
-              WEB SERVER
-            </div>
-            <h3 className="text-3xl font-bold text-white mb-4">LiteSpeed Web Server Entegrasyonu</h3>
-            <p className="text-slate-400 mb-6">
-              Hostify, sektörün önde gelen yüksek performanslı web sunucusu LiteSpeed'i kullanır. WordPress, Magento ve Drupal gibi popüler platformlarla maksimum trafik yüklerini kolayca yönetir.
-            </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">WordPress, Magento ve Drupal için LS Cache</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Anında HTTP/2 ve QUIC desteği</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">Otomatik görsel optimizasyonu ve sıkıştırma</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">PHP 8 ve statik içerik için verimli önbellek</span>
-              </li>
-            </ul>
-            <Button variant="outline" className="border-slate-700 text-slate-300 hover:border-indigo-500/30" asChild>
-              <Link to="#pricing">Daha Fazla Bilgi</Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Reliable by Design */}
-        <div className="mb-24">
-          <div className="text-center mb-12">
-            <div className="inline-block px-3 py-1 bg-white/5 border border-white/10 text-indigo-400 text-sm font-semibold rounded-full mb-4">
-              GÜVENİLİRLİK
-            </div>
-            <h3 className="text-3xl font-bold text-white mb-3">Tasarımdan Güvenilir</h3>
-            <p className="text-slate-400 max-w-2xl mx-auto">
-              Platformumuz günlük yedeklemelerden DDoS korumasına kadar, sitenizin güvenliğini en öncelikli konumuzda tutar.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 hover:border-indigo-500/30 hover:shadow-lg transition-all">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">DDoS Koruması</h4>
-              <p className="text-sm text-slate-400">
-                Ağınızı ve hosting'inizi çevrimiçi saldırılara karşı korumak için çok katmanlı savunma kullanıyoruz.
-              </p>
-            </div>
-
-            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 hover:border-indigo-500/30 hover:shadow-lg transition-all">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <HardDrive className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">Otomatik Yedekleme</h4>
-              <p className="text-sm text-slate-400">
-                Günlük otomatik yedeklemeler her zaman dashboard'unuzdan geri yükleme seçeneği sunar.
-              </p>
-            </div>
-
-            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 hover:border-indigo-500/30 hover:shadow-lg transition-all">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <Database className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">Anycast DNS</h4>
-              <p className="text-sm text-slate-400">
-                Global CDN ağımız sitenizi hızlı, güvenilir ve dağıtık DNS name serverları ile teslim eder.
-              </p>
-            </div>
-
-            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 hover:border-indigo-500/30 hover:shadow-lg transition-all">
-              <div className="h-12 w-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                <Lock className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h4 className="font-bold text-white mb-2">Ücretsiz SSL</h4>
-              <p className="text-sm text-slate-400">
-                Let's Encrypt SSL ile otomatik olarak tüm verilerinizi şifreleyip güvenli hale getirin.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tech Stack Comparison */}
-        <div className="bg-slate-900 rounded-3xl p-8 md:p-12 border border-slate-800">
-          <div className="mb-8">
-            <div className="inline-block px-3 py-1 bg-white/5 border border-white/10 text-indigo-400 text-sm font-semibold rounded-full mb-4">
-              TEKNOLOJİ YIĞINI
-            </div>
-            <h3 className="text-3xl font-bold text-white mb-3">Stack Neden Önemli</h3>
-            <p className="text-slate-400">
-              Hosting %99.9 uptime süresi sunar, ama gerçek başarı sizin ne kadar hızlı büyüdüğünüzdür. Altyapımız performans üzerine kurulmuştur.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <div>
-              <h4 className="font-bold mb-4 text-indigo-400">COMPUTE POWER</h4>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Architecture</span>
-                  <span className="font-medium text-slate-300">Intel Lake / AMD EPYC</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Base Speed</span>
-                  <span className="font-medium text-slate-300">3.5Ghz+</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Isolation</span>
-                  <span className="font-medium text-slate-300">CloudLinux LVE</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4 text-indigo-400">DATA ACCESS</h4>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Storage Tier</span>
-                  <span className="font-medium text-slate-300">NVMe Gen 4</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">IOPS</span>
-                  <span className="font-medium text-slate-300">Up to 1000 MB/s</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Database Engine</span>
-                  <span className="font-medium text-slate-300">MariaDB / PostgreSQL</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4 text-indigo-400">CONNECTIVITY</h4>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">Bandwidth</span>
-                  <span className="font-medium text-slate-300">Sınırsız</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">CDN</span>
-                  <span className="font-medium text-slate-300">Cloudflare</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-800">
-                  <span className="text-slate-400">HTTP Protocol</span>
-                  <span className="font-medium text-slate-300">HTTP/3 (QUIC)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-slate-800 text-center">
-            <p className="text-sm text-slate-400 mb-4">
-              Farkı deneyimlemek için hazır mısınız?<br />
-              Tüm özelliklerimiz Hostify'a dahildir.
-            </p>
-            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-500 text-white" asChild>
-              <Link to="/register">Ücretsiz Başla</Link>
-            </Button>
-          </div>
+                </TiltCard>
+              </ScrollReveal>
+            )
+          })}
         </div>
       </div>
     </section>

@@ -27,6 +27,14 @@ import {
   RefreshCw,
   FileText,
   ExternalLink,
+  Brain,
+  Wand2,
+  Smile,
+  Meh,
+  Frown,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -55,6 +63,10 @@ export default function AdminTicketDetail() {
   const [isInternal, setIsInternal] = useState(false)
   const [sending, setSending] = useState(false)
   const [aiRunning, setAiRunning] = useState(false)
+  const [aiSummarizing, setAiSummarizing] = useState(false)
+  const [aiDrafting, setAiDrafting] = useState(false)
+  const [aiSummaryText, setAiSummaryText] = useState(null) // null = gizli, string = göster
+  const [summaryExpanded, setSummaryExpanded] = useState(false)
   const [cancellingInvoice, setCancellingInvoice] = useState(false)
 
   const loadTicket = async () => {
@@ -277,6 +289,73 @@ export default function AdminTicketDetail() {
     }
   }
 
+  const getAiFunctionsUrl = async () => {
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+    return baseUrl.includes('/rest/v1')
+      ? baseUrl.replace('/rest/v1', '/functions/v1')
+      : `${baseUrl}/functions/v1`
+  }
+
+  const runAiSummary = async () => {
+    setAiSummarizing(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const functionsUrl = await getAiFunctionsUrl()
+      const res = await fetch(`${functionsUrl}/ai-assist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({ action: 'summarize_ticket', ticket_id: ticket.id }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error || 'Özetleme başarısız')
+      setAiSummaryText(result.summary)
+      setSummaryExpanded(true)
+      setTicket(prev => ({ ...prev, ai_summary: result.summary }))
+      toast.success('AI özeti oluşturuldu')
+    } catch (err) {
+      toast.error('Özet oluşturulamadı', { description: err.message })
+    } finally {
+      setAiSummarizing(false)
+    }
+  }
+
+  const runAiDraft = async () => {
+    setAiDrafting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const functionsUrl = await getAiFunctionsUrl()
+      const res = await fetch(`${functionsUrl}/ai-assist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({ action: 'draft_reply', ticket_id: ticket.id }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error || 'Taslak oluşturulamadı')
+      setReplyText(result.draft)
+      setIsInternal(false)
+      toast.success('AI taslağı cevap alanına aktarıldı')
+    } catch (err) {
+      toast.error('Taslak oluşturulamadı', { description: err.message })
+    } finally {
+      setAiDrafting(false)
+    }
+  }
+
+  const sentimentConfig = {
+    positive: { label: 'Memnun', icon: Smile, className: 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30' },
+    neutral: { label: 'Nötr', icon: Meh, className: 'text-slate-500 border-slate-300 bg-slate-50 dark:bg-slate-900/30' },
+    negative: { label: 'Memnunsuz', icon: Frown, className: 'text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950/30' },
+    angry: { label: 'Öfkeli', icon: AlertTriangle, className: 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30' },
+  }
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[40vh]">
@@ -328,6 +407,16 @@ export default function AdminTicketDetail() {
             <Badge variant="outline">{ticket.category || 'general'}</Badge>
             <StatusBadge status={ticket.priority} />
             <StatusBadge status={ticket.status} />
+            {ticket.sentiment && (() => {
+              const cfg = sentimentConfig[ticket.sentiment] || sentimentConfig.neutral
+              const SentIcon = cfg.icon
+              return (
+                <Badge variant="outline" className={cfg.className}>
+                  <SentIcon className="h-3 w-3 mr-1" />
+                  {cfg.label}
+                </Badge>
+              )
+            })()}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -458,18 +547,78 @@ export default function AdminTicketDetail() {
             })
           )}
 
+          {/* AI Summary card */}
+          {(ticket.ai_summary || aiSummaryText) && (
+            <Card className="rounded-xl border-primary/30 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" />
+                    <span>AI Özeti</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSummaryExpanded(v => !v)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {summaryExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CardTitle>
+              </CardHeader>
+              {summaryExpanded && (
+                <CardContent>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {aiSummaryText || ticket.ai_summary}
+                  </p>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
           {/* Reply composer */}
           <Card className="rounded-xl">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center justify-between gap-2">
                 <span>{isInternal ? 'Dahili Not' : 'Müşteriye Cevap'}</span>
-                <button
-                  type="button"
-                  onClick={() => setIsInternal(v => !v)}
-                  className="text-xs text-primary hover:underline"
-                >
-                  {isInternal ? 'Cevap yaz' : 'Dahili nota çevir'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 text-primary hover:bg-primary/10"
+                    onClick={runAiSummary}
+                    disabled={aiSummarizing}
+                    title="AI ile talep özetle"
+                  >
+                    {aiSummarizing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Brain className="h-3 w-3" />
+                    )}
+                    AI Özet
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 text-primary hover:bg-primary/10"
+                    onClick={runAiDraft}
+                    disabled={aiDrafting}
+                    title="AI taslak yanıt oluştur"
+                  >
+                    {aiDrafting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-3 w-3" />
+                    )}
+                    AI Taslak
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setIsInternal(v => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {isInternal ? 'Cevap yaz' : 'Dahili nota çevir'}
+                  </button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

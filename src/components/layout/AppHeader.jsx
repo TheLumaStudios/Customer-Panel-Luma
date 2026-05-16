@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCart } from '@/contexts/CartContext'
 import { useCustomerView } from '@/contexts/CustomerViewContext'
+import { useDevMode } from '@/contexts/DevModeContext'
 import { useExchangeRate } from '@/hooks/useCurrency'
 import { convertUsdToTry } from '@/lib/api/currency'
 import { cn } from '@/lib/utils'
@@ -49,6 +50,8 @@ import {
   Cpu,
   Wifi,
   Key,
+  Terminal,
+  Store,
   Cloud,
   Shield,
   Wallet as WalletIcon,
@@ -67,6 +70,7 @@ const adminNav = [
     children: [
       { name: 'Müşteri Listesi', path: '/admin/customers', icon: Users, desc: 'Tüm müşterileri yönetin', color: 'bg-blue-100 text-blue-600' },
       { name: 'Çalışanlar', path: '/admin/employees', icon: UserCog, desc: 'Ekip üyelerini yönetin', color: 'bg-violet-100 text-violet-600' },
+      { name: 'Bayiler', path: '/admin/resellers', icon: Store, desc: 'Bayi ortakları ve kar payı yönetimi', color: 'bg-orange-100 text-orange-600' },
     ],
   },
   {
@@ -174,7 +178,9 @@ export default function AppHeader() {
 
   const role = profile?.role || 'customer'
   const isAdmin = role === 'admin' || role === 'employee'
+  const isCustomer = role === 'customer'
   const nav = role === 'admin' ? adminNav : role === 'employee' ? employeeNav : customerNav
+  const { devMode, toggle: toggleDevMode } = useDevMode()
 
   const isActive = (item) => {
     if (item.path) {
@@ -364,6 +370,22 @@ export default function AppHeader() {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* DevMode Toggle — sadece müşteri panelinde */}
+            {isCustomer && (
+              <button
+                onClick={toggleDevMode}
+                title={devMode ? 'Geliştirici Modu: AÇIK (Ctrl+Shift+D)' : 'Geliştirici Modu: KAPALI (Ctrl+Shift+D)'}
+                className={cn(
+                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors',
+                  devMode
+                    ? 'bg-violet-100 text-violet-600 hover:bg-violet-200'
+                    : 'hover:bg-muted text-muted-foreground'
+                )}
+              >
+                <Terminal className="h-[18px] w-[18px]" />
+              </button>
+            )}
 
             {/* Çıkış */}
             <button

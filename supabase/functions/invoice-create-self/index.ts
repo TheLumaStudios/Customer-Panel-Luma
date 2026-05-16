@@ -339,8 +339,73 @@ serve(async (req) => {
       }
     }
 
-    // Tax: hosting/vds/domain = 20, wallet_topup = 0
-    const taxRate = hasWalletTopUp ? 0 : 20
+    // ─── Dynamic Tax Resolution (Multi-Tax Engine) ───
+    // Müşterinin ülkesine ve VAT durumuna göre vergi oranı belirlenir.
+    // Kural önceliği: müşteri ülkesi > AB reverse charge > varsayılan
+    let taxRate = hasWalletTopUp ? 0 : 20 // Güvenli varsayılan
+
+    if (!hasWalletTopUp) {
+      try {
+        // Müşterinin vergi bilgilerini al
+        const { data: taxCustomer } = await supabaseAdmin
+          .from('customers')
+          .select('country_code, vat_id, vat_verified')
+          .eq('id', customerId)
+          .maybeSingle()
+
+        const countryCode = taxCustomer?.country_code || 'TR'
+        const vatId = taxCustomer?.vat_id
+        const vatVerified = taxCustomer?.vat_verified ?? false
+
+        // Ülkeye özgün kural ara
+        const { data: countryRule } = await supabaseAdmin
+          .from('tax_rules')
+          .select('rate, tax_type')
+          .eq('country_code', countryCode)
+          .eq('is_active', true)
+          .order('priority', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (countryRule) {
+          taxRate = countryRule.rate
+        } else {
+          // AB ülkesi midir kontrol et
+          const { data: euCountry } = await supabaseAdmin
+            .from('eu_countries')
+            .select('country_code')
+            .eq('country_code', countryCode)
+            .maybeSingle()
+
+          if (euCountry) {
+            // B2B AB müşterisi + doğrulanmış VAT ID → reverse charge (%0)
+            if (vatId && vatVerified) {
+              taxRate = 0
+            } else {
+              // B2C AB veya doğrulanmamış VAT → varsayılan AB VAT kuralı
+              const { data: defaultRule } = await supabaseAdmin
+                .from('tax_rules')
+                .select('rate')
+                .eq('country_code', '*')
+                .eq('is_active', true)
+                .order('priority', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+              taxRate = defaultRule?.rate ?? 20
+            }
+          }
+          // Türkiye değilse ve AB değilse → 0 (vergi uygulanmaz)
+          else if (countryCode !== 'TR') {
+            taxRate = 0
+          }
+        }
+      } catch (taxErr) {
+        // Vergi hesaplama başarısız olursa Türkiye varsayılanına dön
+        console.warn('invoice-create-self: tax resolution failed, using default 20%', taxErr)
+        taxRate = 20
+      }
+    }
+
     const subtotal = validatedItems.reduce((s, it) => s + it.amount, 0)
     const discountedSubtotal = Math.max(0, subtotal - discountAmount)
     const tax = Math.round((discountedSubtotal * taxRate) / 100 * 100) / 100

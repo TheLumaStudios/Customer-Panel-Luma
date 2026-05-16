@@ -27,7 +27,6 @@ export default function LandingFooter() {
       title: 'Kurumsal',
       links: [
         { label: 'Hakkımızda', href: '/about' },
-        { label: 'Fiyatlandırma', href: '/pricing' },
         { label: 'İletişim', href: '/contact' },
         { label: 'Sistem Durumu', href: '/status' },
       ],
@@ -45,33 +44,30 @@ export default function LandingFooter() {
   ]
 
   return (
-    <footer className="bg-slate-950 border-t border-slate-800">
+    <footer className="bg-[#030303] border-t border-white/[0.06]">
       <div className="container px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-                <Server className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-lg font-bold text-white">Luma</span>
+              <img src="/luma.png" alt="Luma" className="h-7 brightness-200" />
             </Link>
-            <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-xs">
+            <p className="text-sm text-white/40 leading-relaxed mb-6 max-w-xs">
               Yüksek performanslı altyapı ve kurumsal destek ile dijital varlığınızı güçlendirin.
             </p>
             <div className="space-y-2.5" id="iletisim">
-              <div className="text-sm text-slate-400">
-                <strong className="text-slate-300">Yetkili:</strong> Enes POYRAZ
+              <div className="text-sm text-white/40">
+                <strong className="text-white/70">Yetkili:</strong> Enes POYRAZ
               </div>
-              <a href="mailto:enespoyraz380@gmail.com" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+              <a href="mailto:enespoyraz380@gmail.com" className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors">
                 <Mail className="h-4 w-4" />
                 enespoyraz380@gmail.com
               </a>
-              <a href="tel:+905467805972" className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+              <a href="tel:+905467805972" className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors">
                 <Phone className="h-4 w-4" />
                 0546 780 59 72
               </a>
-              <div className="flex items-start gap-2 text-sm text-slate-400">
+              <div className="flex items-start gap-2 text-sm text-white/40">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
                 Cumhuriyet Mah. Başak Sk. Yükselen Park Nilüfer St. H Blok Kat:7 D:18 Nilüfer/Bursa
               </div>
@@ -87,7 +83,7 @@ export default function LandingFooter() {
                   <li key={link.label}>
                     <Link
                       to={link.href}
-                      className="text-sm text-slate-400 hover:text-white transition-colors"
+                      className="text-sm text-white/40 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -99,25 +95,25 @@ export default function LandingFooter() {
         </div>
 
         {/* Payment Logos */}
-        <div className="flex items-center justify-center gap-6 pb-8 border-b border-slate-800 mb-8">
+        <div className="flex items-center justify-center gap-6 pb-8 border-b border-white/[0.06] mb-8">
           <img src="/kart-logolari.png" alt="Mastercard, Visa, American Express, Troy" className="h-7 w-auto opacity-60 hover:opacity-90 transition-opacity" />
           <div className="h-6 w-px bg-slate-800" />
           <div className="flex items-center gap-1.5 opacity-60">
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-500" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-            <span className="text-xs text-slate-500">SSL Korumalı Ödeme</span>
+            <span className="text-xs text-white/25">SSL Korumalı Ödeme</span>
           </div>
         </div>
 
         {/* Bottom */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-white/25">
             &copy; {currentYear} Luma. Tüm hakları saklıdır.
           </p>
-          <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-slate-500">
-            <Link to="/privacy" className="hover:text-slate-300 transition-colors">Gizlilik</Link>
-            <Link to="/terms" className="hover:text-slate-300 transition-colors">Kullanım Koşulları</Link>
-            <Link to="/kvkk" className="hover:text-slate-300 transition-colors">KVKK</Link>
-            <Link to="/distance-sales" className="hover:text-slate-300 transition-colors">Mesafeli Satış</Link>
+          <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-white/25">
+            <Link to="/privacy" className="hover:text-white/70 transition-colors">Gizlilik</Link>
+            <Link to="/terms" className="hover:text-white/70 transition-colors">Kullanım Koşulları</Link>
+            <Link to="/kvkk" className="hover:text-white/70 transition-colors">KVKK</Link>
+            <Link to="/distance-sales" className="hover:text-white/70 transition-colors">Mesafeli Satış</Link>
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Eye, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, MessageSquare, Sparkles, Loader2, Smile, Meh, Frown, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import TicketForm from '@/components/tickets/TicketForm'
@@ -154,6 +154,24 @@ export default function Tickets() {
     return <StatusBadge status={priority} />
   }
 
+  const SentimentBadge = ({ sentiment }) => {
+    if (!sentiment) return <span className="text-muted-foreground text-xs">—</span>
+    const map = {
+      positive: { icon: Smile, label: 'Memnun', className: 'text-green-600' },
+      neutral: { icon: Meh, label: 'Nötr', className: 'text-slate-400' },
+      negative: { icon: Frown, label: 'Memnunsuz', className: 'text-orange-500' },
+      angry: { icon: AlertTriangle, label: 'Öfkeli', className: 'text-red-500' },
+    }
+    const cfg = map[sentiment] || map.neutral
+    const Icon = cfg.icon
+    return (
+      <span className={`flex items-center gap-1 text-xs ${cfg.className}`} title={cfg.label}>
+        <Icon className="h-3.5 w-3.5" />
+        <span className="hidden lg:inline">{cfg.label}</span>
+      </span>
+    )
+  }
+
   // Filter tickets by department
   const filteredTickets = filterDepartmentId === 'all'
     ? tickets
@@ -258,6 +276,7 @@ export default function Tickets() {
                   <TableHead>Kategori</TableHead>
                   <TableHead>Öncelik</TableHead>
                   <TableHead>Durum</TableHead>
+                  <TableHead>Duygu</TableHead>
                   <TableHead>Oluşturma</TableHead>
                   <TableHead>Cevaplar</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
@@ -298,6 +317,7 @@ export default function Tickets() {
                     </TableCell>
                     <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
                     <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                    <TableCell><SentimentBadge sentiment={ticket.sentiment} /></TableCell>
                     <TableCell>{formatDate(ticket.created_at)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">

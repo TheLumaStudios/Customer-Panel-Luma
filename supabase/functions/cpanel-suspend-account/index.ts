@@ -102,6 +102,29 @@ serve(async (req) => {
 
     console.log('✅ cPanel account suspended')
 
+    // Webhook: hosting.suspended
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/webhook-deliver`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          customer_id: hosting.customer_id,
+          event: 'hosting.suspended',
+          payload: {
+            hosting_id,
+            domain: hosting.domain,
+            cpanel_username: hosting.cpanel_username,
+            reason,
+          },
+        }),
+      })
+    } catch (webhookErr) {
+      console.warn('⚠️ Webhook delivery skipped:', webhookErr)
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

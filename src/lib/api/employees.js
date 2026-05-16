@@ -189,6 +189,31 @@ export const createEmployeeAuth = async (employee_id, send_sms = false) => {
 }
 
 /**
+ * Reset password for an employee who already has an auth account
+ * @param {string} employee_id - Employee ID
+ */
+export const resetEmployeePassword = async (employee_id) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('employee-reset-password', {
+      body: { employee_id },
+    })
+
+    if (error) throw new Error(error.message || 'Şifre sıfırlanamadı')
+    if (!data?.success) throw new Error(data?.error || 'Şifre sıfırlanamadı')
+
+    return {
+      success: true,
+      email: data.email,
+      full_name: data.full_name,
+      password: data.password,
+    }
+  } catch (error) {
+    console.error('resetEmployeePassword failed:', error)
+    throw error
+  }
+}
+
+/**
  * Send password to employee via SMS
  * @param {string} employee_id - Employee ID
  * @param {string} password - Password to send

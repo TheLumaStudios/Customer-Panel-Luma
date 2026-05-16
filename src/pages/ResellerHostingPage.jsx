@@ -19,7 +19,7 @@ export default function ResellerHostingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-[#050505]">
       <SEO
         title="Reseller Hosting - Bayi Hosting Paketleri"
         description="WHM kontrol panelli reseller hosting paketleri. Kendi hosting şirketinizi kurun. LiteSpeed, CloudLinux, sınırsız hesap. Aylık 130,99₺'den."
@@ -36,12 +36,12 @@ export default function ResellerHostingPage() {
         <div className="relative container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm mb-6">
             <Globe className="h-4 w-4 text-cyan-400" />
-            <span className="text-sm text-slate-300">Bayi Hosting</span>
+            <span className="text-sm text-white/70">Bayi Hosting</span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
             Reseller Hosting Paketleri
           </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-white/50 max-w-3xl mx-auto">
             Ultra performans web hosting deneyimi. LiteSpeed, CloudLinux ve SSD donanımı ile
             müşterilerinize en iyi hizmeti sunun.
           </p>
@@ -53,7 +53,7 @@ export default function ResellerHostingPage() {
         <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-4">Reseller Paketleri</h2>
-            <p className="text-slate-400">Kendi hosting işletmenizi kurun</p>
+            <p className="text-white/50">Kendi hosting işletmenizi kurun</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -64,11 +64,11 @@ export default function ResellerHostingPage() {
               return (
                 <div
                   key={pkg.id}
-                  className={`p-6 flex flex-col rounded-2xl bg-slate-800/40 border ${pkg.is_featured ? 'border-indigo-500 shadow-xl ring-2 ring-indigo-500/20' : 'border-slate-700/50 hover:border-slate-600 transition-colors'}`}
+                  className={`p-6 flex flex-col rounded-2xl bg-white/[0.04] border ${pkg.is_featured ? 'border-[#00f2ff]/50 shadow-xl ring-2 ring-[#00f2ff]/10' : 'border-white/[0.08] hover:border-white/[0.15] transition-colors'}`}
                 >
                   {pkg.is_featured && (
                     <div className="mb-3">
-                      <span className="bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                      <span className="bg-[#00f2ff] text-black text-xs font-semibold px-3 py-1 rounded-full">
                         En Popüler
                       </span>
                     </div>
@@ -87,22 +87,22 @@ export default function ResellerHostingPage() {
                   )}
 
                   {/* Disk */}
-                  <div className="flex items-center gap-4 mb-4 text-sm text-slate-400">
+                  <div className="flex items-center gap-4 mb-4 text-sm text-white/50">
                     <span>{formatDisk(pkg.disk_gb)} {pkg.disk_type} Disk</span>
                   </div>
 
                   {/* Price */}
                   <div className="mb-6">
                     {hasDiscount && (
-                      <span className="line-through text-slate-500 text-sm mr-2">
+                      <span className="line-through text-white/30 text-sm mr-2">
                         {formatPrice(pkg.price_original)}₺
                       </span>
                     )}
                     <div>
-                      <span className="text-3xl font-bold text-indigo-400">
+                      <span className="text-3xl font-bold text-[#00f2ff]">
                         {formatPrice(pkg.price_monthly)}₺
                       </span>
-                      <span className="text-slate-400 text-sm">/ay {!pkg.tax_included && '+KDV'}</span>
+                      <span className="text-white/50 text-sm">/ay {!pkg.tax_included && '+KDV'}</span>
                     </div>
                   </div>
 
@@ -114,7 +114,7 @@ export default function ResellerHostingPage() {
                         return (
                           <li key={i} className="flex items-start gap-2">
                             <Check className={`h-4 w-4 flex-shrink-0 mt-0.5 ${isLiteSpeed ? 'text-cyan-400' : 'text-emerald-400'}`} />
-                            <span className={`text-sm ${isLiteSpeed ? 'font-semibold text-cyan-400' : 'text-slate-300'}`}>
+                            <span className={`text-sm ${isLiteSpeed ? 'font-semibold text-cyan-400' : 'text-white/70'}`}>
                               {feature}
                             </span>
                           </li>
@@ -125,7 +125,7 @@ export default function ResellerHostingPage() {
 
                   <Button
                     asChild
-                    className={`w-full mt-auto ${pkg.is_featured ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : ''}`}
+                    className={`w-full mt-auto ${pkg.is_featured ? 'bg-[#00f2ff] text-black hover:bg-[#00f2ff]/90' : ''}`}
                     variant={pkg.is_featured ? 'default' : 'outline'}
                   >
                     <Link to="/register">Sipariş Ver</Link>
@@ -138,25 +138,25 @@ export default function ResellerHostingPage() {
       </section>
 
       {/* LiteSpeed Highlight */}
-      <section className="py-16 border-t border-slate-800">
+      <section className="py-16 border-t border-white/[0.08]">
         <div className="container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-4">LiteSpeed WebServer</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto mb-8">
+          <p className="text-white/50 max-w-2xl mx-auto mb-8">
             Tüm reseller paketlerimiz LiteSpeed WebServer ile birlikte gelir.
             Apache'ye göre 6 kata kadar daha hızlı sayfa yüklemeleri elde edin.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <div className="p-4 text-center rounded-2xl bg-slate-800/40 border border-slate-700/50">
-              <div className="text-2xl font-bold text-indigo-400 mb-1">6x</div>
-              <p className="text-sm text-slate-400">Daha Hızlı</p>
+            <div className="p-4 text-center rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+              <div className="text-2xl font-bold text-[#00f2ff] mb-1">6x</div>
+              <p className="text-sm text-white/50">Daha Hızlı</p>
             </div>
-            <div className="p-4 text-center rounded-2xl bg-slate-800/40 border border-slate-700/50">
-              <div className="text-2xl font-bold text-indigo-400 mb-1">%99.9</div>
-              <p className="text-sm text-slate-400">Uptime Garantisi</p>
+            <div className="p-4 text-center rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+              <div className="text-2xl font-bold text-[#00f2ff] mb-1">%99.9</div>
+              <p className="text-sm text-white/50">Uptime Garantisi</p>
             </div>
-            <div className="p-4 text-center rounded-2xl bg-slate-800/40 border border-slate-700/50">
-              <div className="text-2xl font-bold text-indigo-400 mb-1">7/24</div>
-              <p className="text-sm text-slate-400">Teknik Destek</p>
+            <div className="p-4 text-center rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+              <div className="text-2xl font-bold text-[#00f2ff] mb-1">7/24</div>
+              <p className="text-sm text-white/50">Teknik Destek</p>
             </div>
           </div>
         </div>

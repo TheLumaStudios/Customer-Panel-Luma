@@ -196,6 +196,32 @@ serve(async (req) => {
     }
 
     console.log('✅ Invoice created successfully:', invoice.invoice_number)
+
+    // Webhook: invoice.created
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/webhook-deliver`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          customer_id,
+          event: 'invoice.created',
+          payload: {
+            invoice_id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            total: invoice.total,
+            currency: invoice.currency,
+            due_date: invoice.due_date,
+            status: invoice.status,
+          },
+        }),
+      })
+    } catch (webhookErr) {
+      console.warn('⚠️ Webhook delivery skipped:', webhookErr)
+    }
+
     console.log('📤 Returning invoice data to client')
 
     return new Response(

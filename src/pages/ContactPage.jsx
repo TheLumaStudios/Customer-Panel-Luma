@@ -8,7 +8,7 @@ import ContactFAQ from '@/components/landing/ContactFAQ'
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-[#050505]">
       <SEO
         title="İletişim"
         description="Luma Yazılım ile iletişime geçin. Satış, teknik destek ve genel sorularınız için 7/24 destek ekibimize ulaşın. Bursa, Türkiye."

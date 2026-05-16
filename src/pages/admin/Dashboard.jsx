@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Globe, Server, FileText, TrendingUp, UserPlus } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Users, Globe, Server, FileText, TrendingUp, UserPlus, AlertTriangle, Heart } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,6 +12,7 @@ import {
 const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#6366f1']
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     customers: 0,
     domains: 0,
@@ -21,9 +24,11 @@ export default function AdminDashboard() {
   const [newCustomerData, setNewCustomerData] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
   const [upcomingRenewals, setUpcomingRenewals] = useState([])
+  const [churnRisk, setChurnRisk] = useState([])  // Kayıp riski yüksek müşteriler
 
   useEffect(() => {
     fetchDashboardData()
+    fetchChurnRisk()
   }, [])
 
   const fetchDashboardData = async () => {
@@ -124,12 +129,59 @@ export default function AdminDashboard() {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
     const { data: expiringDomains } = await supabase
       .from('domains')
-      .select('id, domain_name, expiry_date')
-      .lte('expiry_date', thirtyDaysFromNow.toISOString())
-      .gte('expiry_date', new Date().toISOString())
-      .order('expiry_date', { ascending: true })
+      .select('id, domain_name, expiration_date')
+      .lte('expiration_date', thirtyDaysFromNow.toISOString())
+      .gte('expiration_date', new Date().toISOString())
+      .order('expiration_date', { ascending: true })
       .limit(5)
     setUpcomingRenewals(expiringDomains || [])
+  }
+
+  const fetchChurnRisk = async () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    // health_score henüz migrate edilmemiş olabilir → try/catch ile yakala
+    let lowHealthCustomers = []
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, full_name, email, health_score, customer_code, status')
+        .lt('health_score', 30)
+        .is('anonymized_at', null)
+        .eq('status', 'active')
+        .order('health_score', { ascending: true })
+        .limit(5)
+      if (!error) lowHealthCustomers = data || []
+    } catch { /* health_score kolonu henüz yok */ }
+
+    // Gecikmiş faturası olan aktif müşteriler
+    const { data: overdueInvoices } = await supabase
+      .from('invoices')
+      .select('customer_id')
+      .eq('status', 'overdue')
+      .gte('created_at', thirtyDaysAgo)
+      .limit(20)
+
+    let overdueCustomers = []
+    if (overdueInvoices?.length) {
+      const ids = [...new Set(overdueInvoices.map(i => i.customer_id).filter(Boolean))]
+      const { data: cdata } = await supabase
+        .from('customers')
+        .select('id, full_name, email, customer_code, health_score')
+        .in('id', ids)
+        .limit(10)
+      overdueCustomers = (cdata || []).map(c => ({ ...c, overdueFlag: true }))
+    }
+
+    // Birleştir ve tekrarları kaldır
+    const combined = [...lowHealthCustomers]
+    const seenIds = new Set(combined.map(c => c.id))
+    for (const c of overdueCustomers) {
+      if (!seenIds.has(c.id)) { combined.push(c); seenIds.add(c.id) }
+    }
+
+    combined.sort((a, b) => (a.health_score ?? 50) - (b.health_score ?? 50))
+    setChurnRisk(combined.slice(0, 8))
   }
 
   const formatCurrency = (val) => `₺${(val || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
@@ -310,6 +362,54 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
+      {/* Churn Prediction Widget */}
+      {churnRisk.length > 0 && (
+        <Card className="border-orange-200 dark:border-orange-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+              <AlertTriangle className="h-5 w-5" />
+              Kayıp Riski Yüksek Müşteriler
+              <Badge variant="outline" className="ml-auto text-orange-700 border-orange-300 bg-orange-50 dark:bg-orange-950/30">
+                {churnRisk.length} müşteri
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {churnRisk.map(customer => {
+                const score = customer.health_score ?? null
+                const scoreColor = score == null ? 'text-muted-foreground'
+                  : score < 20 ? 'text-red-600 font-bold'
+                  : 'text-orange-500 font-semibold'
+                return (
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-orange-900 transition-colors"
+                    onClick={() => navigate(`/admin/customers/${customer.id}`)}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{customer.full_name || customer.email || '-'}</div>
+                      <div className="text-xs text-muted-foreground">{customer.customer_code}</div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {customer.overdueFlag && (
+                        <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50 text-xs">
+                          Gecikmiş Fatura
+                        </Badge>
+                      )}
+                      <div className={`flex items-center gap-1 text-sm ${scoreColor}`}>
+                        <Heart className="h-3.5 w-3.5" />
+                        {score != null ? score : '—'}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -321,7 +421,7 @@ export default function AdminDashboard() {
                 {upcomingRenewals.map(domain => (
                   <div key={domain.id} className="flex items-center justify-between py-2 border-b last:border-0">
                     <span className="text-sm font-medium">{domain.domain_name}</span>
-                    <span className="text-xs text-muted-foreground">{formatDate(domain.expiry_date)}</span>
+                    <span className="text-xs text-muted-foreground">{formatDate(domain.expiration_date)}</span>
                   </div>
                 ))}
               </div>

@@ -131,12 +131,20 @@ serve(async (req) => {
       throw new Error(errorMsg)
     }
 
+    // Şifreleme: pgp_sym_encrypt ile hassas bilgiyi şifrele
+    const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? 'default-change-in-production'
+    const { data: encryptedRow, error: encErr } = await supabaseClient
+      .rpc('encrypt_text', { plain: accountPassword, key: encryptionKey })
+      .single()
+    const encryptedPassword = encryptedRow ?? accountPassword // fallback: pgcrypto yoksa düz metin
+
     // Update hosting record with cPanel credentials
     await supabaseClient
       .from('hosting')
       .update({
         cpanel_username: username.toLowerCase().substring(0, 16),
-        cpanel_password: accountPassword,
+        cpanel_password: accountPassword,           // backward compat (plain, okunabilir)
+        cpanel_password_encrypted: encryptedPassword, // şifreli versiyon
         server_ip: server.ip_address,
         nameserver_1: server.nameserver_1 || 'ns1.example.com',
         nameserver_2: server.nameserver_2 || 'ns2.example.com',

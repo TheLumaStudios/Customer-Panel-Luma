@@ -23,11 +23,7 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />
   }
 
-  // If user exists but no profile, still allow access (RLS disabled scenario)
-  if (!profile) {
-    console.warn('User exists but no profile found - RLS might be blocking or profile not created')
-    // Don't block, just log warning
-  }
+  // Profile may still be loading — allow access, fetchProfile always provides a fallback
 
   if (requiredRole && profile?.role && profile.role !== requiredRole) {
     let redirectPath = '/dashboard'

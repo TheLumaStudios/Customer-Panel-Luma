@@ -29,7 +29,7 @@ export function BrandingSettings({ customerId }) {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data } = await supabase.from('customer_branding').select('*').eq('customer_id', customerId).single()
+      const { data } = await supabase.from('customer_branding').select('*').eq('customer_id', customerId).maybeSingle()
       if (data) {
         setBranding(data)
         setLogoUrl(data.logo_url)

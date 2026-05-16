@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { supabase } from '@/lib/supabase'
 import supabaseApi from '@/lib/axios'
 
@@ -9,70 +9,66 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Guard stale state updates after unmount (React Strict Mode safe)
+  const mountedRef = useRef(true)
+  // Prevent concurrent fetchProfile calls
+  const fetchingProfileRef = useRef(false)
+
   useEffect(() => {
-    // Timeout to prevent infinite loading
+    mountedRef.current = true
+
+    // Safety valve — fires only if onAuthStateChange never responds
     const loadingTimeout = setTimeout(() => {
-      console.warn('Auth loading timeout - forcing loading to false')
-      setLoading(false)
-    }, 5000) // 5 seconds max
+      if (mountedRef.current) setLoading(false)
+    }, 8000)
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error)
-        setLoading(false)
-        clearTimeout(loadingTimeout)
-        return
-      }
-
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        fetchProfile(session.user).finally(() => {
-          clearTimeout(loadingTimeout)
-        })
-      } else {
-        setLoading(false)
-        clearTimeout(loadingTimeout)
-      }
-    }).catch((error) => {
-      console.error('Unexpected session error:', error)
-      setLoading(false)
-      clearTimeout(loadingTimeout)
-    })
-
-    // Listen for auth changes
+    // Use onAuthStateChange exclusively — it fires INITIAL_SESSION immediately,
+    // which replaces the separate getSession() call and avoids lock contention.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null)
+      async (event, session) => {
+        if (!mountedRef.current) return
+
+        // First real response from Supabase — cancel the safety timeout
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          clearTimeout(loadingTimeout)
+        }
+
+        if (mountedRef.current) setUser(session?.user ?? null)
+
         if (session?.user) {
           await fetchProfile(session.user)
         } else {
-          setProfile(null)
-          setLoading(false)
+          if (mountedRef.current) {
+            setProfile(null)
+            setLoading(false)
+          }
         }
       }
     )
 
     return () => {
+      mountedRef.current = false
       clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProfile = async (user) => {
+    // Skip if a fetch is already in flight (prevents double-fetch in Strict Mode)
+    if (fetchingProfileRef.current) return
+    fetchingProfileRef.current = true
+
     try {
       const userId = user.id
 
-      // Always read from the profiles table so admin-side edits
-      // (customers → profiles) are reflected immediately. We fall back to
-      // user_metadata only if the profiles row is missing.
       const response = await supabaseApi.get('/profiles', {
         params: {
           id: `eq.${userId}`,
           select: '*'
         }
       })
+
+      if (!mountedRef.current) return
 
       const data = response.data?.[0] || null
 
@@ -89,7 +85,7 @@ export const AuthProvider = ({ children }) => {
           company_name: user.user_metadata.company_name || '',
         })
       } else {
-        console.warn('No profile found for user:', userId)
+        // Profile row missing — use a minimal fallback (no console noise)
         setProfile({
           id: userId,
           email: user.email,
@@ -98,8 +94,8 @@ export const AuthProvider = ({ children }) => {
         })
       }
     } catch (error) {
-      console.error('Unexpected error fetching profile:', error)
-      // Minimal fallback
+      if (!mountedRef.current) return
+      // Minimal fallback on network/RLS error
       setProfile({
         id: user.id,
         email: user.email,
@@ -107,7 +103,8 @@ export const AuthProvider = ({ children }) => {
         full_name: user.email.split('@')[0],
       })
     } finally {
-      setLoading(false)
+      fetchingProfileRef.current = false
+      if (mountedRef.current) setLoading(false)
     }
   }
 

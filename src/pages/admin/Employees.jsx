@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from '@/hooks/useEmployees'
-import { generateEmployeeCode, createEmployeeAuth } from '@/lib/api/employees'
+import { generateEmployeeCode, createEmployeeAuth, resetEmployeePassword } from '@/lib/api/employees'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +35,7 @@ export default function Employees() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [generatedPassword, setGeneratedPassword] = useState(null)
   const [creatingAuthFor, setCreatingAuthFor] = useState(null)
+  const [resettingPasswordFor, setResettingPasswordFor] = useState(null)
 
   const { data: employees, isLoading, error, refetch } = useEmployees({
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -186,6 +187,43 @@ export default function Employees() {
       })
     } finally {
       setCreatingAuthFor(null)
+    }
+  }
+
+  const handleResetPassword = async (employee) => {
+    if (!employee.profile_id) {
+      toast.error('Giriş hesabı yok', {
+        description: 'Önce çalışan için giriş hesabı oluşturun',
+      })
+      return
+    }
+
+    setResettingPasswordFor(employee.id)
+
+    try {
+      const result = await resetEmployeePassword(employee.id)
+
+      setGeneratedPassword({
+        email: result.email,
+        password: result.password,
+        full_name: result.full_name,
+        employee_name: employee.full_name,
+        employee_id: employee.id,
+        employee_phone: employee.phone,
+        sms_sent: false,
+        is_reset: true,
+      })
+      setPasswordDialogOpen(true)
+
+      toast.success('Şifre sıfırlandı', {
+        description: `${employee.full_name} için yeni şifre oluşturuldu`,
+      })
+    } catch (error) {
+      toast.error('Şifre sıfırlanamadı', {
+        description: error.message,
+      })
+    } finally {
+      setResettingPasswordFor(null)
     }
   }
 
@@ -430,6 +468,18 @@ export default function Employees() {
                             <Key className="h-4 w-4 text-purple-600" />
                           </Button>
                         )}
+                        {employee.profile_id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleResetPassword(employee)}
+                            disabled={resettingPasswordFor === employee.id}
+                            title="Şifre Sıfırla"
+                          >
+                            <Key className="h-4 w-4 text-orange-500" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -461,9 +511,14 @@ export default function Employees() {
       <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Giriş Bilgileri Oluşturuldu</DialogTitle>
+            <DialogTitle>
+              {generatedPassword?.is_reset ? 'Şifre Sıfırlandı' : 'Giriş Bilgileri Oluşturuldu'}
+            </DialogTitle>
             <DialogDescription>
-              {generatedPassword?.employee_name} için giriş hesabı başarıyla oluşturuldu
+              {generatedPassword?.is_reset
+                ? `${generatedPassword?.employee_name} için yeni şifre oluşturuldu`
+                : `${generatedPassword?.employee_name} için giriş hesabı başarıyla oluşturuldu`
+              }
             </DialogDescription>
           </DialogHeader>
           {generatedPassword && (

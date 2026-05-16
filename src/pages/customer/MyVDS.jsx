@@ -1,21 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useVDS } from '@/hooks/useVDS'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCustomers } from '@/hooks/useCustomers'
+import { supabase } from '@/lib/supabase'
+import { useDevMode } from '@/contexts/DevModeContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Cpu, HardDrive, AlertCircle, Eye, Copy, Check, Terminal, Monitor } from 'lucide-react'
+import { Cpu, HardDrive, AlertCircle, Eye, Copy, Check, Terminal, Monitor, Activity, Wifi } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export default function MyVDS() {
   const [selectedVDS, setSelectedVDS] = useState(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [copiedField, setCopiedField] = useState(null)
+  const [usageMetrics, setUsageMetrics] = useState([]) // { service_id, metric_type, quantity, period_start }
   const { profile } = useAuth()
+  const { devMode } = useDevMode()
   const { data: allVDS, isLoading, error } = useVDS()
   const { data: customers } = useCustomers()
 
@@ -24,6 +28,18 @@ export default function MyVDS() {
 
   // Filter VDS records for current customer
   const vdsPackages = allVDS?.filter(vds => vds.customer_id === currentCustomer?.id)
+
+  // Mevcut ay usage metriklerini çek
+  useEffect(() => {
+    if (!currentCustomer?.id) return
+    const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+    supabase
+      .from('usage_metrics')
+      .select('service_id, metric_type, quantity, period_start')
+      .eq('customer_id', currentCustomer.id)
+      .gte('period_start', periodStart)
+      .then(({ data }) => setUsageMetrics(data || []))
+  }, [currentCustomer?.id])
 
   const handleCopy = async (text, field) => {
     try {
@@ -373,6 +389,108 @@ export default function MyVDS() {
           )}
         </CardContent>
       </Card>
+
+      {/* Usage Metrics */}
+      {vdsPackages && vdsPackages.length > 0 && (
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Bu Ay Kullanım
+            </CardTitle>
+            <CardDescription>
+              Aylık dahil edilmiş limitler ve mevcut kullanım
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {vdsPackages.map((vds) => {
+              const bwMetric = usageMetrics.find(m => m.service_id === vds.id && m.metric_type === 'bandwidth_gb')
+              const bwUsed = bwMetric?.quantity ?? 0
+              const bwLimit = 1000 // 1 TB dahil (usage_billing_rules'dan)
+              const bwPct = Math.min(100, Math.round((bwUsed / bwLimit) * 100))
+
+              return (
+                <div key={vds.id} className="space-y-2 pb-4 border-b last:border-0">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium flex items-center gap-1.5">
+                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                      {vds.vds_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{vds.ip_address || 'IP atanmadı'}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Wifi className="h-3 w-3" />
+                        Bandwidth
+                      </span>
+                      <span>
+                        {bwUsed >= 1000
+                          ? `${(bwUsed / 1000).toFixed(2)} TB`
+                          : `${bwUsed.toFixed(1)} GB`
+                        } / {bwLimit} GB
+                        {bwUsed > bwLimit && (
+                          <span className="ml-1 text-red-500 font-medium">
+                            (+{(bwUsed - bwLimit).toFixed(1)} GB aşım)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          bwPct >= 90 ? 'bg-red-500' : bwPct >= 75 ? 'bg-orange-400' : 'bg-primary'
+                        }`}
+                        style={{ width: `${bwPct}%` }}
+                      />
+                    </div>
+                    {bwUsed === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Kullanım verisi henüz kaydedilmedi.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* DevMode Panel */}
+      {devMode && vdsPackages && vdsPackages.length > 0 && (
+        <Card className="rounded-xl border-violet-300 bg-violet-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-violet-900 text-sm">
+              <Terminal className="h-4 w-4" />
+              Geliştirici Modu — VDS API Referansı
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {vdsPackages.map((vds) => (
+              <div key={vds.id} className="space-y-2 pb-4 border-b border-violet-200 last:border-0">
+                <p className="text-xs font-semibold text-violet-800">{vds.vds_name} ({vds.ip_address || 'IP yok'})</p>
+                <div className="rounded-md bg-gray-900 text-green-400 text-xs p-3 font-mono space-y-1 overflow-x-auto">
+                  <p className="text-gray-400"># VDS listeni çek</p>
+                  <p>curl -X GET \</p>
+                  <p>  "{import.meta.env.VITE_SUPABASE_URL}/rest/v1/vds_packages?customer_id=eq.{currentCustomer?.id}" \</p>
+                  <p>  -H "apikey: {'<API_KEY>'}" \</p>
+                  <p>  -H "Authorization: Bearer {'<ACCESS_TOKEN>'}"</p>
+                  <p className="mt-2 text-gray-400"># Belirli sunucu ID: {vds.id}</p>
+                  <p>curl -X GET \</p>
+                  <p>  "{import.meta.env.VITE_SUPABASE_URL}/rest/v1/vds_packages?id=eq.{vds.id}" \</p>
+                  <p>  -H "apikey: {'<API_KEY>'}" \</p>
+                  <p>  -H "Authorization: Bearer {'<ACCESS_TOKEN>'}"</p>
+                </div>
+              </div>
+            ))}
+            <p className="text-[11px] text-violet-700">
+              API anahtarını <a href="/api-keys" className="underline font-medium">API Anahtarları</a> sayfasından alabilirsin.
+              Access Token için oturum açma sonrası <code className="bg-violet-100 px-1 rounded">supabase.auth.getSession()</code> kullan.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* VDS Expiring Soon Warning */}
       {vdsPackages?.some(vds => {

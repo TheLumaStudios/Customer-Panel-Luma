@@ -4,6 +4,7 @@ import { AuthProvider } from '@/hooks/useAuth.jsx'
 import { CartProvider } from '@/contexts/CartContext'
 import { ProductCacheProvider } from '@/contexts/ProductCacheContext'
 import { CustomerViewProvider } from '@/contexts/CustomerViewContext'
+import { DevModeProvider } from '@/contexts/DevModeContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { PublicRoute } from '@/components/auth/PublicRoute'
 import MainLayout from '@/components/layout/MainLayout'
@@ -22,7 +23,6 @@ function RouteTracker() {
 
 import LandingPage from '@/pages/LandingPage'
 import FeaturesPage from '@/pages/FeaturesPage'
-import PricingPage from '@/pages/PricingPage'
 import ContactPage from '@/pages/ContactPage'
 import VpsPage from '@/pages/VpsPage'
 import VdsPage from '@/pages/VdsPage'
@@ -96,12 +96,15 @@ import AdminIncidents from '@/pages/admin/Incidents'
 import Referrals from '@/pages/customer/Referrals'
 import NotificationPreferences from '@/pages/customer/NotificationPreferences'
 import WalletRefunds from '@/pages/admin/WalletRefunds'
+import Integrations from '@/pages/admin/Integrations'
+import Resellers from '@/pages/admin/Resellers'
 
 function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
+        <DevModeProvider>
         <ProductCacheProvider>
         <CustomerViewProvider>
         <CartProvider>
@@ -110,7 +113,6 @@ function App() {
           {/* Landing pages - accessible to everyone */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
@@ -194,6 +196,8 @@ function App() {
             <Route path="promo-codes" element={<PromoCodes />} />
             <Route path="incidents" element={<AdminIncidents />} />
             <Route path="wallet-refunds" element={<WalletRefunds />} />
+            <Route path="integrations" element={<Integrations />} />
+            <Route path="resellers" element={<Resellers />} />
           </Route>
 
           {/* Employee routes */}
@@ -285,6 +289,7 @@ function App() {
         </CartProvider>
         </CustomerViewProvider>
         </ProductCacheProvider>
+        </DevModeProvider>
       </AuthProvider>
     </BrowserRouter>
     </ErrorBoundary>

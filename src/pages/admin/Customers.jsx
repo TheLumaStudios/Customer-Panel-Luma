@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, MessageSquare, RefreshCw, Key, AlertTriangle, ShieldAlert, ShieldCheck, Shield } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import CustomerForm from '@/components/customers/CustomerForm'
 import SendSmsModal from '@/components/customers/SendSmsModal'
@@ -22,6 +22,7 @@ import FilterChips from '@/components/tables/FilterChips'
 import ExportButton, { commonExportColumns } from '@/components/tables/ExportButton'
 import { useCustomerView } from '@/contexts/CustomerViewContext'
 import { HealthScoreBadge } from '@/components/shared/HealthScoreBadge'
+import { supabase } from '@/lib/supabase'
 
 export default function Customers() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function Customers() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [passwordCustomer, setPasswordCustomer] = useState(null)
   const [passwordData, setPasswordData] = useState(null)
+  const [fraudCheckingId, setFraudCheckingId] = useState(null)
 
   const { viewMode, filterByType } = useCustomerView()
 
@@ -335,6 +337,72 @@ export default function Customers() {
     )
   }
 
+  const handleFraudCheck = async (e, customer) => {
+    e.stopPropagation()
+    if (!customer.profile_id) {
+      toast.error('Bu müşterinin profili bulunamadı')
+      return
+    }
+    setFraudCheckingId(customer.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+      const functionsUrl = baseUrl.includes('/rest/v1')
+        ? baseUrl.replace('/rest/v1', '/functions/v1')
+        : `${baseUrl}/functions/v1`
+
+      const res = await fetch(`${functionsUrl}/fraud-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({ profile_id: customer.profile_id, customer_id: customer.id }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error || 'Kontrol başarısız')
+
+      const score = result.fraud_risk_score
+      const level = score >= 75 ? 'Yüksek Risk' : score >= 50 ? 'Şüpheli' : 'Temiz'
+      toast.success(`Fraud kontrolü tamamlandı — ${level} (${score}/100)`, {
+        description: result.flags?.length ? result.flags.map(f => f.detail).join(' • ') : 'Risk sinyali tespit edilmedi',
+      })
+      refetch()
+    } catch (err) {
+      toast.error('Fraud kontrolü başarısız', { description: err.message })
+    } finally {
+      setFraudCheckingId(null)
+    }
+  }
+
+  const FraudBadge = ({ score }) => {
+    if (score == null || score === 0) return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Shield className="h-3.5 w-3.5" />
+        <span className="hidden lg:inline">—</span>
+      </span>
+    )
+    if (score >= 75) return (
+      <span className="flex items-center gap-1 text-xs font-medium text-red-600" title={`Risk skoru: ${score}/100`}>
+        <ShieldAlert className="h-3.5 w-3.5" />
+        <span>{score}</span>
+      </span>
+    )
+    if (score >= 50) return (
+      <span className="flex items-center gap-1 text-xs font-medium text-orange-500" title={`Risk skoru: ${score}/100`}>
+        <ShieldAlert className="h-3.5 w-3.5" />
+        <span>{score}</span>
+      </span>
+    )
+    return (
+      <span className="flex items-center gap-1 text-xs text-green-600" title={`Risk skoru: ${score}/100`}>
+        <ShieldCheck className="h-3.5 w-3.5" />
+        <span>{score}</span>
+      </span>
+    )
+  }
+
   const getStatusBadge = (status) => {
     return <StatusBadge status={status} />
   }
@@ -434,6 +502,7 @@ export default function Customers() {
                   <TableHead>Durum</TableHead>
                   <TableHead>Tip</TableHead>
                   <TableHead>Skor</TableHead>
+                  <TableHead>Risk</TableHead>
                   <TableHead>Kayıt Tarihi</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
@@ -477,6 +546,25 @@ export default function Customers() {
                     </TableCell>
                     <TableCell>
                       <HealthScoreBadge score={customer.health_score} size="sm" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <FraudBadge score={customer.profile?.fraud_risk_score} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          title="Fraud kontrolü yap"
+                          disabled={fraudCheckingId === customer.id}
+                          onClick={(e) => handleFraudCheck(e, customer)}
+                        >
+                          {fraudCheckingId === customer.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Shield className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>{formatDate(customer.created_at)}</TableCell>
                     <TableCell className="text-right">

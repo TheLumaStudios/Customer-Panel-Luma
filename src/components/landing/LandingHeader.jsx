@@ -165,8 +165,6 @@ export default function LandingHeader() {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
-  const isHome = location.pathname === '/'
-
   const handleMenuEnter = (key) => {
     clearTimeout(menuTimeoutRef.current)
     setActiveMenu(key)
@@ -177,17 +175,8 @@ export default function LandingHeader() {
   }
 
   const headerBg = scrolled
-    ? 'bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/50 shadow-lg shadow-black/20'
-    : 'bg-slate-950/70 backdrop-blur-md'
-
-  const textColor = 'text-slate-200'
-
-  const logoSrc = '/lumawhite.png'
-
-  const simpleLinks = [
-    { label: 'Fiyatlandırma', href: '/pricing' },
-    { label: 'İletişim', href: '/contact' },
-  ]
+    ? 'bg-[#050505]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-black/50 shadow-sm'
+    : 'bg-transparent'
 
   return (
     <header className={`fixed top-0 z-50 w-full transition-all duration-300 ${headerBg}`}>
@@ -195,7 +184,7 @@ export default function LandingHeader() {
         <div className="flex h-16 lg:h-18 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img src={logoSrc} alt="Luma" className="h-7 transition-all" />
+            <img src="/luma.png" alt="Luma" className="h-7 brightness-200 transition-all" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -208,7 +197,7 @@ export default function LandingHeader() {
                 onMouseLeave={handleMenuLeave}
               >
                 <button
-                  className={`flex items-center gap-1 px-3 py-2 text-sm font-medium ${textColor} hover:text-primary transition-colors outline-none rounded-lg hover:bg-black/5`}
+                  className={`flex items-center gap-1 px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors outline-none rounded-lg hover:bg-white/5`}
                 >
                   {menu.label}
                   <ChevronDown className={`h-3.5 w-3.5 opacity-50 transition-transform duration-200 ${activeMenu === key ? 'rotate-180' : ''}`} />
@@ -226,13 +215,13 @@ export default function LandingHeader() {
                     onMouseEnter={() => handleMenuEnter(key)}
                     onMouseLeave={handleMenuLeave}
                   >
-                    <div className="bg-slate-900 rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/40 overflow-hidden animate-fade-in min-w-[580px]">
+                    <div className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/80 overflow-hidden animate-fade-in min-w-[580px]">
                       <div className="flex">
                         {/* Items */}
                         <div className="flex-1 p-5 space-y-5">
                           {menu.sections.map((section) => (
                             <div key={section.title}>
-                              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">
+                              <div className="text-[11px] font-semibold text-white/30 uppercase tracking-wider px-3 mb-2">
                                 {section.title}
                               </div>
                               <div className="space-y-1">
@@ -240,28 +229,28 @@ export default function LandingHeader() {
                                   <Link
                                     key={item.label}
                                     to={item.href}
-                                    className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-slate-800/80 transition-colors group"
+                                    className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group"
                                   >
                                     <div className={`h-10 w-10 rounded-lg ${item.bgColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
                                       <item.icon className={`h-5 w-5 ${item.color}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-100 group-hover:text-indigo-400 transition-colors">
+                                        <span className="text-sm font-medium text-white/80 group-hover:text-[#00f2ff] transition-colors">
                                           {item.label}
                                         </span>
                                         {item.tag && (
-                                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${item.tagColor || 'bg-indigo-500'} text-white leading-none`}>
+                                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${item.tagColor || 'bg-[#00f2ff]/20 text-[#00f2ff]'} leading-none`}>
                                             {item.tag}
                                           </span>
                                         )}
                                       </div>
                                       <div className="flex items-center justify-between mt-0.5">
-                                        <span className="text-xs text-slate-400">{item.desc}</span>
+                                        <span className="text-xs text-white/40">{item.desc}</span>
                                       </div>
                                     </div>
                                     <div className="text-right shrink-0 pl-3">
-                                      <div className="text-xs font-semibold text-slate-300">{item.price}</div>
+                                      <div className="text-xs font-semibold text-white/50">{item.price}</div>
                                     </div>
                                   </Link>
                                 ))}
@@ -272,19 +261,19 @@ export default function LandingHeader() {
 
                         {/* Highlight */}
                         {menu.highlight && (
-                          <div className="w-52 border-l border-slate-700/60 bg-slate-800/50 p-5 flex flex-col justify-between">
+                          <div className="w-52 border-l border-white/[0.06] bg-white/[0.02] p-5 flex flex-col justify-between">
                             <div>
-                              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mb-4">
-                                <Zap className="h-4 w-4 text-white" />
+                              <div className="h-9 w-9 rounded-lg bg-[#00f2ff]/10 border border-[#00f2ff]/20 flex items-center justify-center mb-4">
+                                <Zap className="h-4 w-4 text-[#00f2ff]" />
                               </div>
-                              <div className="text-sm font-semibold text-slate-100 mb-2">{menu.highlight.title}</div>
-                              <p className="text-xs text-slate-400 leading-relaxed">
+                              <div className="text-sm font-semibold text-white mb-2">{menu.highlight.title}</div>
+                              <p className="text-xs text-white/40 leading-relaxed">
                                 {menu.highlight.desc}
                               </p>
                             </div>
                             <Link
                               to={menu.highlight.href}
-                              className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                              className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-[#00f2ff] hover:text-[#00f2ff]/80 transition-colors"
                             >
                               Detayları gör
                               <ArrowRight className="h-3 w-3" />
@@ -298,11 +287,13 @@ export default function LandingHeader() {
               </div>
             ))}
 
-            {simpleLinks.map((link) => (
+            {[
+              { label: 'İletişim', href: '/contact' },
+            ].map((link) => (
               <Link
                 key={link.label}
                 to={link.href}
-                className={`px-3 py-2 text-sm font-medium ${textColor} hover:text-primary transition-colors rounded-lg hover:bg-black/5`}
+                className="px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors rounded-lg hover:bg-white/5"
               >
                 {link.label}
               </Link>
@@ -313,7 +304,11 @@ export default function LandingHeader() {
           <div className="flex items-center gap-2">
             <CartDropdown />
             {user && profile ? (
-              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500" asChild>
+              <Button
+                size="sm"
+                className="bg-[#00f2ff] text-black hover:bg-[#00f2ff]/90 font-semibold shadow-[0_0_15px_rgba(0,242,255,0.25)]"
+                asChild
+              >
                 <Link to={profile.role === 'admin' ? '/admin/dashboard' : '/dashboard'}>
                   <User className="h-3.5 w-3.5 mr-1.5" />
                   Panel
@@ -321,10 +316,19 @@ export default function LandingHeader() {
               </Button>
             ) : (
               <>
-                <Button size="sm" variant="ghost" className={`hidden sm:inline-flex ${textColor} hover:text-foreground`} asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/5"
+                  asChild
+                >
                   <Link to="/login">Giriş Yap</Link>
                 </Button>
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 shadow-sm" asChild>
+                <Button
+                  size="sm"
+                  className="bg-[#00f2ff] text-black hover:bg-[#00f2ff]/90 font-semibold shadow-[0_0_15px_rgba(0,242,255,0.2)]"
+                  asChild
+                >
                   <Link to="/register">Kayıt Ol</Link>
                 </Button>
               </>
@@ -332,7 +336,7 @@ export default function LandingHeader() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`lg:hidden p-2 rounded-lg ${textColor}`}
+              className="lg:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -343,13 +347,13 @@ export default function LandingHeader() {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white dark:bg-slate-950 border-t border-border max-h-[80vh] overflow-y-auto">
+        <div className="lg:hidden bg-zinc-900/95 backdrop-blur-xl border-t border-white/[0.08] max-h-[80vh] overflow-y-auto">
           <div className="container px-4 py-4 space-y-1 max-w-7xl mx-auto">
             {Object.entries(megaMenus).map(([key, menu]) => (
               <div key={key}>
                 <button
                   onClick={() => setMobileExpanded(mobileExpanded === key ? null : key)}
-                  className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-foreground rounded-lg hover:bg-muted transition-colors"
+                  className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     {menu.label}
@@ -359,7 +363,7 @@ export default function LandingHeader() {
                       </Badge>
                     )}
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${mobileExpanded === key ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 text-white/30 transition-transform ${mobileExpanded === key ? 'rotate-180' : ''}`} />
                 </button>
 
                 {mobileExpanded === key && (
@@ -368,7 +372,7 @@ export default function LandingHeader() {
                       <Link
                         key={item.label}
                         to={item.href}
-                        className="flex items-center gap-3 px-3 py-3 text-sm text-foreground hover:text-primary hover:bg-muted rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-3 text-sm text-white/70 hover:text-[#00f2ff] hover:bg-white/5 rounded-lg transition-colors"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <div className={`h-9 w-9 rounded-lg ${item.bgColor} flex items-center justify-center shrink-0`}>
@@ -378,12 +382,12 @@ export default function LandingHeader() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{item.label}</span>
                             {item.tag && (
-                              <span className={`text-[9px] font-medium px-1 py-0.5 rounded ${item.tagColor || 'bg-indigo-500'} text-white leading-none`}>
+                              <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-[#00f2ff]/20 text-[#00f2ff] leading-none">
                                 {item.tag}
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground">{item.price}'dan</div>
+                          <div className="text-xs text-white/40">{item.price}'dan</div>
                         </div>
                       </Link>
                     ))}
@@ -392,11 +396,13 @@ export default function LandingHeader() {
               </div>
             ))}
 
-            {simpleLinks.map((link) => (
+            {[
+              { label: 'İletişim', href: '/contact' },
+            ].map((link) => (
               <Link
                 key={link.label}
                 to={link.href}
-                className="block px-3 py-2.5 text-sm font-medium text-foreground hover:text-primary hover:bg-muted rounded-lg transition-colors"
+                className="block px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.label}

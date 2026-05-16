@@ -146,8 +146,30 @@ serve(async (req) => {
 
       console.log('✅ Subscription updated, next payment:', nextPaymentDate.toISOString())
 
-      // 5. Müşteriye e-posta gönder (opsiyonel - daha sonra eklenebilir)
-      // await sendEmail(subscription.customer.email, 'Ödeme Başarılı', ...)
+      // 5. Webhook: invoice.paid
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/webhook-deliver`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            customer_id: subscription.customer_id,
+            event: 'invoice.paid',
+            payload: {
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              total: invoice.total,
+              currency: invoice.currency,
+              paid_date: invoice.paid_date,
+              subscription_id: subscription.id,
+            },
+          }),
+        })
+      } catch (webhookErr) {
+        console.warn('⚠️ Webhook delivery skipped:', webhookErr)
+      }
 
       return new Response(
         JSON.stringify({

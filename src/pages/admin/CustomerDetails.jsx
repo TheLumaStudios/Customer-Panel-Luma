@@ -59,6 +59,8 @@ export default function CustomerDetails() {
   const [passwordData, setPasswordData] = useState(null)
   const [kycImagePreview, setKycImagePreview] = useState(null)
   const [kycReminderSending, setKycReminderSending] = useState(false)
+  const [gdprConfirmOpen, setGdprConfirmOpen] = useState(false)
+  const [gdprLoading, setGdprLoading] = useState(false)
   const updateCustomer = useUpdateCustomer()
 
   const { data: customer, isLoading: customerLoading } = useCustomer(id)
@@ -139,6 +141,35 @@ export default function CustomerDetails() {
 
   const handleEdit = () => {
     setFormOpen(true)
+  }
+
+  const handleGdprAnonymize = async () => {
+    setGdprLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL
+      const fnBase = baseUrl.includes('/rest/v1')
+        ? baseUrl.replace('/rest/v1', '/functions/v1')
+        : `${baseUrl}/functions/v1`
+
+      const res = await fetch(`${fnBase}/gdpr-anonymize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ customer_id: id, reason: 'Admin: KVKK/GDPR beni unut talebi' }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Anonimleştirme başarısız')
+      toast.success('Veriler anonimleştirildi', { description: data.message })
+      setGdprConfirmOpen(false)
+      navigate('/admin/customers')
+    } catch (err) {
+      toast.error('Anonimleştirme hatası', { description: err.message })
+    } finally {
+      setGdprLoading(false)
+    }
   }
 
   const handleSendPassword = async () => {
@@ -305,6 +336,21 @@ export default function CustomerDetails() {
             <Edit className="h-4 w-4 mr-2" />
             Düzenle
           </Button>
+          {!customer.anonymized_at && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={() => setGdprConfirmOpen(true)}
+            >
+              <X className="h-3.5 w-3.5" /> KVKK/GDPR Unut
+            </Button>
+          )}
+          {customer.anonymized_at && (
+            <span className="text-xs text-muted-foreground self-center">
+              Anonimleştirildi: {formatDate(customer.anonymized_at)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -852,6 +898,37 @@ export default function CustomerDetails() {
         onConfirm={handleConfirmSend}
         onCancel={() => setPasswordModalOpen(false)}
       />
+
+      {/* KVKK/GDPR Onay Dialogu */}
+      <Dialog open={gdprConfirmOpen} onOpenChange={setGdprConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">KVKK / GDPR — Kişisel Verileri Anonimleştir</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm text-muted-foreground">
+            <p>Bu işlem <strong className="text-foreground">geri alınamaz</strong>. Devam edilirse:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Ad, e-posta, telefon, adres ve KYC belgeleri kalıcı olarak silinir</li>
+              <li>API anahtarları ve webhook tanımları silinir</li>
+              <li>Fatura ve ödeme kayıtları <strong className="text-foreground">yasal zorunluluk</strong> nedeniyle saklanmaya devam eder</li>
+              <li>Hosting / domain servisleri pasife alınır</li>
+            </ul>
+            <p className="text-xs">TTK madde 82 gereği ticari kayıtlar 10 yıl korunur.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setGdprConfirmOpen(false)} disabled={gdprLoading}>
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleGdprAnonymize}
+              disabled={gdprLoading}
+            >
+              {gdprLoading ? 'İşleniyor...' : 'Evet, Anonimleştir'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

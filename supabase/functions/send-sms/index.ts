@@ -2,7 +2,7 @@
 // Deploy: supabase functions deploy send-sms
 // Secrets: supabase secrets set VATANSMS_API_KEY=xxx VATANSMS_SENDER=xxx
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -100,17 +100,50 @@ serve(async (req) => {
     }
     console.log('SMS Request:', JSON.stringify({ sender, phone: cleanPhone, apiUrl }))
 
-    const response = await fetch(`${apiUrl}/1toN`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-    const result = await response.json()
-    console.log('SMS Response:', JSON.stringify(result))
+    let result: Record<string, unknown>
+    try {
+      const response = await fetch(`${apiUrl}/1toN`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+
+      const responseText = await response.text()
+      console.log('SMS Response status:', response.status, 'body:', responseText)
+
+      try {
+        result = JSON.parse(responseText)
+      } catch {
+        result = { raw: responseText }
+      }
+
+      if (!response.ok) {
+        const errMsg = (result as Record<string, unknown>).message as string || `TopluSMS HTTP ${response.status}`
+        console.error('TopluSMS API error:', errMsg)
+        return new Response(
+          JSON.stringify({ success: false, error: `SMS sağlayıcı hatası: ${errMsg}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } catch (fetchErr) {
+      clearTimeout(timeoutId)
+      const isTimeout = (fetchErr as Error).name === 'AbortError'
+      const errMsg = isTimeout ? 'SMS sağlayıcı zaman aşımı' : `Bağlantı hatası: ${(fetchErr as Error).message}`
+      console.error('TopluSMS fetch error:', errMsg)
+      return new Response(
+        JSON.stringify({ success: false, error: errMsg }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const smsCount = Math.ceil(message.length / 160) || 1
 
+    // Log to DB — ignore errors so SMS success isn't blocked by logging failure
     await supabaseAdmin.from('sms_logs').insert({
       phone: cleanPhone,
       message,
@@ -120,13 +153,13 @@ serve(async (req) => {
     })
 
     return new Response(
-      JSON.stringify({ success: true, message: 'SMS sent', messageId: result?.id || `msg_${Date.now()}` }),
+      JSON.stringify({ success: true, message: 'SMS sent', messageId: (result as Record<string, unknown>)?.id || `msg_${Date.now()}` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('send-sms error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

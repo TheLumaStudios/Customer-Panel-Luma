@@ -59,7 +59,7 @@ export default function CsgoPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-[#050505]">
       <SEO
         title="CS:GO / CS2 Sunucu Kiralama"
         description="128 Tick CS:GO ve CS2 sunucu kiralama. Türkiye lokasyon, düşük ping, DDoS koruması, anlık kurulum. Profesyonel oyun sunucusu."
@@ -76,7 +76,7 @@ export default function CsgoPage() {
         <div className="relative container px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm mb-6">
             <Crosshair className="h-4 w-4 text-amber-400" />
-            <span className="text-sm text-slate-300">Oyun Sunucusu</span>
+            <span className="text-sm text-white/70">Oyun Sunucusu</span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
             CS:GO Sunucu
@@ -84,7 +84,7 @@ export default function CsgoPage() {
           <h2 className="text-3xl md:text-4xl font-bold text-amber-400 mb-6">
             128 Tick Performans
           </h2>
-          <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-white/50 max-w-3xl mx-auto">
             Profesyonel CS:GO sunucuları ile düşük ping, 128 tick rate ve
             DDoS korumalı oyun deneyimi yaşayın.
           </p>
@@ -98,31 +98,31 @@ export default function CsgoPage() {
             {packages.map((pkg) => (
               <div
                 key={pkg.name}
-                className={`p-8 rounded-2xl bg-slate-800/40 border ${pkg.featured ? 'border-indigo-500 shadow-xl ring-2 ring-indigo-500/20' : 'border-slate-700/50 hover:border-slate-600 transition-colors'}`}
+                className={`p-8 rounded-2xl bg-white/[0.04] border ${pkg.featured ? 'border-[#00f2ff]/50 shadow-xl ring-2 ring-[#00f2ff]/10' : 'border-white/[0.08] hover:border-white/[0.15] transition-colors'}`}
               >
                 {pkg.featured && (
                   <div className="mb-4">
-                    <span className="bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-[#00f2ff] text-black text-xs font-semibold px-3 py-1 rounded-full">
                       En Popüler
                     </span>
                   </div>
                 )}
                 <h3 className="text-2xl font-bold text-white mb-2">{pkg.name}</h3>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold text-indigo-400">{pkg.price}</span>
-                  <span className="text-slate-400">{pkg.period}</span>
+                  <span className="text-4xl font-bold text-[#00f2ff]">{pkg.price}</span>
+                  <span className="text-white/50">{pkg.period}</span>
                 </div>
                 <ul className="space-y-3 mb-8">
                   {pkg.features.map((feature) => (
                     <li key={feature} className="flex items-center gap-2">
                       <Check className="h-5 w-5 text-amber-400 flex-shrink-0" />
-                      <span className="text-sm text-slate-300">{feature}</span>
+                      <span className="text-sm text-white/70">{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
                   asChild
-                  className={`w-full ${pkg.featured ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : ''}`}
+                  className={`w-full ${pkg.featured ? 'bg-[#00f2ff] text-black hover:bg-[#00f2ff]/90' : ''}`}
                   variant={pkg.featured ? 'default' : 'outline'}
                 >
                   <Link to="/register">Sipariş Ver</Link>

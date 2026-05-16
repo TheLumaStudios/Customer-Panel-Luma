@@ -34,14 +34,14 @@ export default function ContactFAQ() {
   }
 
   return (
-    <section className="py-24 bg-slate-950">
+    <section className="py-24 bg-[#050505]">
       <div className="container px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-slate-400">
+          <p className="text-white/50">
             Get instant answers to common questions about our platform and services.
           </p>
         </div>
@@ -51,23 +51,23 @@ export default function ContactFAQ() {
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
+              className="bg-white/[0.04] border border-white/[0.08] rounded-xl overflow-hidden"
             >
               <button
                 onClick={() => toggleFAQ(index)}
-                className="w-full p-6 flex items-center justify-between text-left hover:bg-slate-800/40 transition-colors"
+                className="w-full p-6 flex items-center justify-between text-left hover:bg-white/[0.05] transition-colors"
               >
                 <span className="font-semibold text-lg text-white pr-4">{faq.question}</span>
                 <ChevronDown
                   className={cn(
-                    'h-5 w-5 text-slate-400 transition-transform flex-shrink-0',
+                    'h-5 w-5 text-white/50 transition-transform flex-shrink-0',
                     openIndex === index && 'rotate-180'
                   )}
                 />
               </button>
               {openIndex === index && (
                 <div className="px-6 pb-6 pt-0">
-                  <p className="text-slate-400 leading-relaxed">{faq.answer}</p>
+                  <p className="text-white/50 leading-relaxed">{faq.answer}</p>
                 </div>
               )}
             </div>
@@ -75,17 +75,17 @@ export default function ContactFAQ() {
         </div>
 
         {/* Still have questions CTA */}
-        <div className="bg-indigo-600 rounded-2xl p-8 md:p-12 text-center">
+        <div className="bg-[#00f2ff]/10 border border-[#00f2ff]/20 rounded-2xl p-8 md:p-12 text-center">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-white/10 mb-6">
             <MessageCircle className="h-8 w-8 text-white" />
           </div>
           <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
             Still have questions?
           </h3>
-          <p className="text-white/90 mb-6 max-w-xl mx-auto">
+          <p className="text-white/70 mb-6 max-w-xl mx-auto">
             Cannot find the answer you are looking for? Our support team is here to help.
           </p>
-          <Button size="lg" variant="secondary" className="bg-white text-indigo-600 hover:bg-white/90">
+          <Button size="lg" variant="secondary" className="bg-[#00f2ff] text-black hover:bg-[#00f2ff]/90">
             Talk to an Expert
           </Button>
         </div>
