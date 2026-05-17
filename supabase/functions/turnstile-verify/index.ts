@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET_KEY') || '0x4AAAAAAC-G4CYCLe9SrAJYc58GqCgy0vI'
+const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET_KEY') || '0x4AAAAAADRI81yM7916S-f3XhksVn5290g'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -61,10 +61,6 @@ export default function RegisterPage() {
       return
     }
 
-    if (!turnstileToken) {
-      setError('Lütfen güvenlik doğrulamasını tamamlayın')
-      return
-    }
 
     if (!kvkkAccepted) {
       setError('KVKK Aydınlatma Metni ve Gizlilik Politikası\'nı kabul etmeniz gerekmektedir')
@@ -285,7 +281,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading || !turnstileToken || !kvkkAccepted}>
+            <Button type="submit" className="w-full" disabled={loading || !kvkkAccepted}>
               {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
             </Button>
             <div className="relative w-full">

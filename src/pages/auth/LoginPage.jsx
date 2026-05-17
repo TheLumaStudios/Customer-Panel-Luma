@@ -50,11 +50,6 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
 
-    if (!turnstileToken) {
-      setError('Lütfen güvenlik doğrulamasını tamamlayın')
-      return
-    }
-
     setLoading(true)
 
     const { data, error } = await signIn(email, password)
@@ -139,7 +134,7 @@ export default function LoginPage() {
             <Turnstile onVerify={setTurnstileToken} theme="light" />
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </Button>
             <div className="relative my-4 w-full">

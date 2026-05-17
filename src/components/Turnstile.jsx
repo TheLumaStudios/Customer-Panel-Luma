@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAC-G4EIfh7sX5Q6j'
+const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADRI898Khr4ZRbKW'
 
 export default function Turnstile({ onVerify, onExpire, onError, theme = 'auto', className = '' }) {
   const containerRef = useRef(null)
@@ -15,6 +15,7 @@ export default function Turnstile({ onVerify, onExpire, onError, theme = 'auto',
     }
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: SITE_KEY,
+      size: 'invisible',
       callback: (token) => onVerify?.(token),
       'expired-callback': () => {
         onExpire?.()
@@ -27,6 +28,8 @@ export default function Turnstile({ onVerify, onExpire, onError, theme = 'auto',
       theme,
       language: 'tr',
     })
+    // Invisible modda otomatik challenge başlat
+    window.turnstile.execute(widgetIdRef.current)
   }, [onVerify, onExpire, onError, theme])
 
   useEffect(() => {

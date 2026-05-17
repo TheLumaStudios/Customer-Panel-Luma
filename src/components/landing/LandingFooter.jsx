@@ -50,7 +50,7 @@ export default function LandingFooter() {
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src="/luma.png" alt="Luma" className="h-7 brightness-200" />
+              <img src="/luma.png" alt="Luma" className="h-7 brightness-0 invert" />
             </Link>
             <p className="text-sm text-white/40 leading-relaxed mb-6 max-w-xs">
               Yüksek performanslı altyapı ve kurumsal destek ile dijital varlığınızı güçlendirin.

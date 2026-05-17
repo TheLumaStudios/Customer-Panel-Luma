@@ -22,13 +22,10 @@ export const AuthProvider = ({ children }) => {
       if (mountedRef.current) setLoading(false)
     }, 8000)
 
-    // Use onAuthStateChange exclusively — it fires INITIAL_SESSION immediately,
-    // which replaces the separate getSession() call and avoids lock contention.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mountedRef.current) return
 
-        // First real response from Supabase — cancel the safety timeout
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           clearTimeout(loadingTimeout)
         }
@@ -36,7 +33,23 @@ export const AuthProvider = ({ children }) => {
         if (mountedRef.current) setUser(session?.user ?? null)
 
         if (session?.user) {
-          await fetchProfile(session.user)
+          // 1) Anında: user_metadata'dan profil set et → loading biter, sayfa açılır
+          const meta = session.user.user_metadata || {}
+          if (meta.role || meta.full_name) {
+            if (mountedRef.current) {
+              setProfile({
+                id: session.user.id,
+                email: session.user.email,
+                role: meta.role || 'customer',
+                full_name: meta.full_name || session.user.email?.split('@')[0] || '',
+                phone: meta.phone || '',
+                company_name: meta.company_name || '',
+              })
+              setLoading(false)
+            }
+          }
+          // 2) Arka planda: DB'den gerçek profili çek ve güncelle
+          fetchProfile(session.user)
         } else {
           if (mountedRef.current) {
             setProfile(null)
@@ -54,54 +67,33 @@ export const AuthProvider = ({ children }) => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProfile = async (user) => {
-    // Skip if a fetch is already in flight (prevents double-fetch in Strict Mode)
     if (fetchingProfileRef.current) return
     fetchingProfileRef.current = true
 
     try {
-      const userId = user.id
-
-      const response = await supabaseApi.get('/profiles', {
-        params: {
-          id: `eq.${userId}`,
-          select: '*'
-        }
-      })
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
 
       if (!mountedRef.current) return
-
-      const data = response.data?.[0] || null
 
       if (data) {
         setProfile(data)
-      } else if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
-        setProfile({
-          id: userId,
-          email: user.email,
-          full_name: user.user_metadata.full_name || '',
-          role: user.user_metadata.role || 'customer',
-          customer_id: user.user_metadata.customer_id,
-          phone: user.user_metadata.phone || '',
-          company_name: user.user_metadata.company_name || '',
-        })
       } else {
-        // Profile row missing — use a minimal fallback (no console noise)
+        const meta = user.user_metadata || {}
         setProfile({
-          id: userId,
+          id: user.id,
           email: user.email,
-          role: 'customer',
-          full_name: user.email.split('@')[0],
+          role: meta.role || 'customer',
+          full_name: meta.full_name || user.email?.split('@')[0] || '',
+          phone: meta.phone || '',
+          company_name: meta.company_name || '',
         })
       }
-    } catch (error) {
-      if (!mountedRef.current) return
-      // Minimal fallback on network/RLS error
-      setProfile({
-        id: user.id,
-        email: user.email,
-        role: 'customer',
-        full_name: user.email.split('@')[0],
-      })
+    } catch {
+      // metadata fallback zaten set edildi, sessizce geç
     } finally {
       fetchingProfileRef.current = false
       if (mountedRef.current) setLoading(false)
@@ -258,15 +250,15 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      setUser(null)
-      setProfile(null)
-      return { error: null }
-    } catch (error) {
-      return { error }
-    }
+    // State'i hemen temizle
+    setUser(null)
+    setProfile(null)
+    // 'local' scope: sadece localStorage/cookie temizler, network çağrısı yok → anında
+    // Böylece sayfa yenilenince Supabase boş session görür, panel'e yönlendirmez
+    await supabase.auth.signOut({ scope: 'local' })
+    // Server token'ı arka planda invalidate et (opsiyonel, güvenlik için)
+    supabase.auth.signOut({ scope: 'global' }).catch(() => {})
+    return { error: null }
   }
 
   const refetch = async () => {

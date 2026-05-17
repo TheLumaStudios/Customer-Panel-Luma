@@ -184,7 +184,7 @@ export default function LandingHeader() {
         <div className="flex h-16 lg:h-18 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/luma.png" alt="Luma" className="h-7 brightness-200 transition-all" />
+            <img src="/luma.png" alt="Luma" className="h-7 brightness-0 invert transition-all" />
           </Link>
 
           {/* Desktop Navigation */}
