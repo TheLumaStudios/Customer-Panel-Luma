@@ -5,14 +5,8 @@ import { addToCart as pixelAddToCart } from '@/lib/metaPixel'
 export const useCheckoutStore = create(
   persist(
     (set, get) => ({
-      // Steps: 'cart' -> 'config' -> 'review' -> 'payment'
-      step: 'cart',
-
       // Cart items
       items: [],
-
-      // Configuration per item
-      configurations: {}, // { itemId: { os: 'ubuntu', panel: 'cpanel', ... } }
 
       // Customer info (for non-logged-in checkout)
       customerInfo: null,
@@ -34,8 +28,6 @@ export const useCheckoutStore = create(
       currentInvoiceId: null,
 
       // Actions
-      setStep: (step) => set({ step }),
-
       addItem: (item) => set((state) => {
         if (state.items.find(i => i.id === item.id)) return state
         // Meta Pixel: AddToCart event
@@ -52,14 +44,6 @@ export const useCheckoutStore = create(
 
       removeItem: (id) => set((state) => ({
         items: state.items.filter(i => i.id !== id),
-        configurations: Object.fromEntries(
-          Object.entries(state.configurations).filter(([k]) => k !== id)
-        ),
-        currentInvoiceId: null,
-      })),
-
-      updateItemConfig: (id, config) => set((state) => ({
-        configurations: { ...state.configurations, [id]: { ...state.configurations[id], ...config } },
         currentInvoiceId: null,
       })),
 
@@ -135,9 +119,7 @@ export const useCheckoutStore = create(
 
       // Reset
       clearCheckout: () => set({
-        step: 'cart',
         items: [],
-        configurations: {},
         promoCode: '',
         promoDiscount: 0,
         promoValidated: false,
@@ -152,10 +134,8 @@ export const useCheckoutStore = create(
       name: 'luma-checkout',
       partialize: (state) => ({
         items: state.items,
-        configurations: state.configurations,
         billingPeriod: state.billingPeriod,
         promoCode: state.promoCode,
-        step: state.step,
         currentInvoiceId: state.currentInvoiceId,
       }),
     }
