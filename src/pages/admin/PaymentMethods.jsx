@@ -49,6 +49,23 @@ const PROVIDER_CONFIGS = {
     testAction: 'batch_close',
     fnName: 'qnb-payment',
   },
+  tami: {
+    label: 'Tami (Garanti BBVA)',
+    color: 'green',
+    logo: null,
+    description: 'Garanti BBVA Tami Sanal POS. POS Yönetimi ekranından alınan JWK bilgileri ile çalışır.',
+    docsUrl: 'https://dev.tami.com.tr/api-katalog',
+    fields: [
+      { key: 'tami_merchant_number', label: 'Merchant Number (Üye İşyeri No)', type: 'text', placeholder: '000000001' },
+      { key: 'tami_terminal_number', label: 'Terminal Number',                  type: 'text', placeholder: '001' },
+      { key: 'tami_api_key',         label: 'API Key — JWK "k" (base64url)',   type: 'password', placeholder: '••••••••', hint: 'POS Yönetimi > JWK dosyasından "k" alanı.' },
+      { key: 'tami_key_id',          label: 'Key ID — JWK "kid"',              type: 'text', placeholder: 'key-id-001', hint: 'POS Yönetimi > JWK dosyasından "kid" alanı.' },
+    ],
+    booleanFields: [
+      { key: 'tami_test_mode', label: 'Test Modu (sandbox-paymentapi.tami.com.tr)' },
+    ],
+    fnName: 'tami-payment',
+  },
 }
 
 const ALL_SETTINGS_KEYS = Object.values(PROVIDER_CONFIGS).flatMap(p => [

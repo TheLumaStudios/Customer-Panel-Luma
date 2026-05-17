@@ -345,38 +345,76 @@ export default function Checkout() {
         store.clearCheckout()
         navigate('/payment-success')
       } else {
-        // QNB başarısız → iyzico'ya yönlendir
+        // QNB başarısız → fallback zinciri
         setQnbOpen(false)
-        toast.info('Ödeme sayfasına yönlendiriliyorsunuz…')
-        const iyzicoResult = await initializeIyzico.mutateAsync({
-          invoice_id: invoiceId,
-          return_url: `${window.location.origin}/payment-success`,
-        })
-        setIyzicoContent(iyzicoResult.checkoutFormContent || '')
-        setIyzicoUrl(iyzicoResult.paymentPageUrl || '')
-        setIyzicoOpen(true)
-        initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
-        capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+        await handleFallbackPayment(invoiceId, qnbForm)
       }
     } catch (err) {
-      // Ağ / HTTP hatası — iyzico'ya geç
+      // Ağ / HTTP hatası — fallback zinciri
       setQnbOpen(false)
-      toast.info('Ödeme sayfasına yönlendiriliyorsunuz…')
-      try {
-        const iyzicoResult = await initializeIyzico.mutateAsync({
-          invoice_id: invoiceId,
-          return_url: `${window.location.origin}/payment-success`,
-        })
-        setIyzicoContent(iyzicoResult.checkoutFormContent || '')
-        setIyzicoUrl(iyzicoResult.paymentPageUrl || '')
-        setIyzicoOpen(true)
-        initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
-        capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
-      } catch (iyziErr) {
-        toast.error('Ödeme başlatılamadı', { description: iyziErr.message })
-      }
+      await handleFallbackPayment(invoiceId, qnbForm)
     } finally {
       setQnbPaying(false)
+    }
+  }
+
+  // Fallback zinciri: Tami 3DS → iyzico
+  const handleFallbackPayment = async (invoiceId, cardForm) => {
+    toast.info('Ödeme sayfasına yönlendiriliyorsunuz…')
+    const { data: { session } } = await supabase.auth.getSession()
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL
+
+    // 1. Önce Tami 3D Secure dene
+    try {
+      const expiryClean = (cardForm?.expiry || '').replace(/\D/g, '')
+      const tamiRes = await fetch(`${baseUrl}/functions/v1/tami-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          action: 'auth_3ds',
+          invoice_id: invoiceId,
+          card_pan: (cardForm?.pan || '').replace(/\s/g, ''),
+          card_expiry_month: expiryClean.slice(0, 2),
+          card_expiry_year: `20${expiryClean.slice(2, 4)}`,
+          card_cvv: cardForm?.cvv || '',
+          card_holder: '',
+          installment_count: parseInt(cardForm?.installment || '0') || 1,
+          callback_url: `${baseUrl}/functions/v1/tami-callback`,
+        }),
+      })
+      if (tamiRes.ok) {
+        const tamiResult = await tamiRes.json()
+        if (tamiResult.success && tamiResult.htmlContent) {
+          // Tami HTML formunu iyzico dialog'uyla göster (aynı bileşen)
+          setIyzicoContent(tamiResult.htmlContent)
+          setIyzicoUrl('')
+          setIyzicoOpen(true)
+          initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+          capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+          return
+        }
+      }
+    } catch {
+      // Tami de başarısız → iyzico'ya düş
+    }
+
+    // 2. Son çare: iyzico
+    try {
+      const iyzicoResult = await initializeIyzico.mutateAsync({
+        invoice_id: invoiceId,
+        return_url: `${window.location.origin}/payment-success`,
+      })
+      setIyzicoContent(iyzicoResult.checkoutFormContent || '')
+      setIyzicoUrl(iyzicoResult.paymentPageUrl || '')
+      setIyzicoOpen(true)
+      initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+      capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+    } catch (iyziErr) {
+      toast.error('Ödeme başlatılamadı', { description: iyziErr.message })
     }
   }
 
