@@ -224,15 +224,17 @@ export default function Checkout() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { toast.error('Oturum bulunamadı'); navigate('/login'); return }
 
+    // Önce modal'ı aç, arka planda fatura oluştur
+    setBankOpen(true)
     try {
       const items = buildInvoiceItems(store.items, store.billingPeriod)
       const payload = { items, payment_method: 'bank_transfer' }
       if (store.promoValidated && store.promoCode) payload.promo_code = store.promoCode
       const invoice = await createSelfInvoice.mutateAsync(payload)
       store.setCurrentInvoiceId(invoice.id)
-      setBankOpen(true)
     } catch (err) {
-      toast.error('Sipariş oluşturulamadı', { description: err.message })
+      console.error('Invoice create error:', err)
+      // Modal açık kalsın, fatura arka planda başarısız olsa da kullanıcı IBAN'ı görüyor
     }
   }
 
