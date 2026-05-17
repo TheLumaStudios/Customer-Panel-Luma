@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Bell, Check, X, ShoppingCart, Trash2, Code, Server } from 'lucide-react'
+import { Bell, Check, X, ShoppingCart, Trash2, Code, Server, Landmark, CreditCard } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -29,35 +30,51 @@ export default function Header() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin' || profile?.role === 'employee'
 
-  // Mock notifications - In production, fetch from API
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: 'Yeni Fatura',
-      message: 'Hosting paketiniz için yeni fatura oluşturuldu',
-      date: new Date(),
-      read: false,
-      type: 'invoice'
-    },
-    {
-      id: 2,
-      title: 'Destek Talebi Yanıtlandı',
-      message: 'Hosting sorunu talebiniz yanıtlandı',
-      date: new Date(Date.now() - 86400000),
-      read: false,
-      type: 'ticket'
-    },
-    {
-      id: 3,
-      title: 'Domain Yenilenme Hatırlatması',
-      message: 'example.com domaininiz 15 gün içinde yenilenmelidir',
-      date: new Date(Date.now() - 172800000),
-      read: false,
-      type: 'domain'
-    },
-  ])
+  // Admin notifications — sadece admin/employee için gerçek DB'den
+  const [notifications, setNotifications] = useState([])
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const fetchNotifications = useCallback(async () => {
+    if (!isAdmin) return
+    const { data } = await supabase
+      .from('admin_notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (data) setNotifications(data)
+  }, [isAdmin])
+
+  useEffect(() => {
+    fetchNotifications()
+    if (!isAdmin) return
+    // Gerçek zamanlı yeni bildirimler
+    const channel = supabase
+      .channel('admin_notifications_rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_notifications' }, () => {
+        fetchNotifications()
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [isAdmin, fetchNotifications])
+
+  const markAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+    if (!unreadIds.length) return
+    await supabase.from('admin_notifications').update({ is_read: true }).in('id', unreadIds)
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
+
+  const dismissNotification = async (e, id) => {
+    e.stopPropagation()
+    await supabase.from('admin_notifications').update({ is_read: true }).eq('id', id)
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  const notifIcon = (type) => {
+    if (type === 'bank_transfer') return <Landmark className="h-3.5 w-3.5 text-amber-400" />
+    return <Bell className="h-3.5 w-3.5 text-indigo-400" />
+  }
 
   // Psychological pricing: round to .99 (e.g., 801 → 799.99)
   const toPsychologicalPrice = (price) => {
@@ -176,6 +193,17 @@ export default function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* Ödeme Yöntemleri kısayolu - sadece admin */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/admin/payment-methods')}
+            className="p-2 hover:bg-secondary rounded-md transition-colors"
+            title="Ödeme Yöntemleri"
+          >
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+          </button>
+        )}
+
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -195,7 +223,7 @@ export default function Header() {
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Bildirimler</span>
               {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" className="h-6 text-xs">
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={markAllRead}>
                   <Check className="h-3 w-3 mr-1" />
                   Tümünü Okundu İşaretle
                 </Button>
@@ -211,31 +239,29 @@ export default function Header() {
                 notifications.map((notification) => (
                   <DropdownMenuItem
                     key={notification.id}
-                    className="flex-col items-start p-3 cursor-pointer"
+                    className={`flex-col items-start p-3 cursor-pointer ${!notification.is_read ? 'bg-amber-500/5' : ''}`}
                   >
                     <div className="flex items-start justify-between w-full gap-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
+                          {notifIcon(notification.type)}
                           <span className="font-medium text-sm">{notification.title}</span>
-                          {!notification.read && (
-                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                          {!notification.is_read && (
+                            <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0"></span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           {notification.message}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(notification.date)}
+                          {formatDate(notification.created_at)}
                         </p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // Handle delete notification
-                        }}
+                        className="h-6 w-6 flex-shrink-0"
+                        onClick={(e) => dismissNotification(e, notification.id)}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -247,8 +273,8 @@ export default function Header() {
             {notifications.length > 0 && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-center text-sm text-primary cursor-pointer">
-                  Tüm Bildirimleri Görüntüle
+                <DropdownMenuItem className="text-center text-sm text-primary cursor-pointer" onClick={markAllRead}>
+                  Tümünü Okundu İşaretle
                 </DropdownMenuItem>
               </>
             )}

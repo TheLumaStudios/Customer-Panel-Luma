@@ -88,17 +88,26 @@ serve(async (req) => {
     if (customerEmail) {
       const { data: existing } = await supabaseAdmin
         .from('customers')
-        .select('id')
-        .eq('email', customerEmail)
+        .select('id, profile_id')
+        .ilike('email', customerEmail)   // case-insensitive match
         .maybeSingle()
-      customerRow = existing
+      if (existing) {
+        customerRow = existing
+        // profile_id bağlantısı yoksa şimdi set et — ilerideki ownership kontrollerini geçer
+        if (!existing.profile_id) {
+          await supabaseAdmin
+            .from('customers')
+            .update({ profile_id: user.id })
+            .eq('id', existing.id)
+        }
+      }
     }
 
     if (!customerRow) {
       // Try lookup by profile_id as a secondary path
       const { data: byProfile } = await supabaseAdmin
         .from('customers')
-        .select('id')
+        .select('id, profile_id')
         .eq('profile_id', user.id)
         .maybeSingle()
       customerRow = byProfile

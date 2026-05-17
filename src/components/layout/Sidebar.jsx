@@ -30,7 +30,8 @@ import {
   Bell,
   Tag,
   AlertTriangle,
-  Wallet as WalletIcon
+  Wallet as WalletIcon,
+  CreditCard,
 } from 'lucide-react'
 
 const adminMenuItems = [
@@ -57,6 +58,7 @@ const adminMenuItems = [
   { name: 'Promosyon Kodları', path: '/admin/promo-codes', icon: Tag },
   { name: 'Bakiye İadeler', path: '/admin/wallet-refunds', icon: WalletIcon },
   { name: 'Olaylar', path: '/admin/incidents', icon: AlertTriangle },
+  { name: 'Ödeme Yöntemleri', path: '/admin/payment-methods', icon: CreditCard },
   { name: 'Sistem Ayarları', path: '/admin/system-settings', icon: Sliders },
   { name: 'Ayarlar', path: '/admin/settings', icon: Settings },
 ]

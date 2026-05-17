@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/lib/toast'
-import { Settings, Save, CreditCard, Building2, Timer, Percent, Mail, TrendingUp, RefreshCw, Cloud, Bot } from 'lucide-react'
+import { Settings, Save, CreditCard, Building2, Timer, Percent, Mail, TrendingUp, Cloud, Bot, ToggleLeft, ToggleRight, Loader2, ExternalLink } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -15,9 +15,6 @@ export default function SystemSettings() {
   const [applyingMargin, setApplyingMargin] = useState(false)
 
   const [settings, setSettings] = useState({
-    iyzico_invoice_type: '',
-    iyzico_payment_method: '',
-    iyzico_official_invoice: true,
     is_bankasi_iban: '',
     ziraat_bankasi_iban: '',
     default_bank_iban: '',
@@ -58,9 +55,6 @@ export default function SystemSettings() {
         .from('system_settings')
         .select('*')
         .in('setting_key', [
-          'iyzico_invoice_type',
-          'iyzico_payment_method',
-          'iyzico_official_invoice',
           'is_bankasi_iban',
           'ziraat_bankasi_iban',
           'default_bank_iban',
@@ -110,6 +104,7 @@ export default function SystemSettings() {
       setLoading(false)
     }
   }
+
 
   const handleSave = async () => {
     try {
@@ -164,64 +159,20 @@ export default function SystemSettings() {
       </div>
 
       <div className="grid gap-6">
-        {/* iyzico Ödeme Ayarları */}
+        {/* ─── ÖDEME YÖNTEMLERİ YÖNLENDIRME ──────────────────────────────── */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              <CardTitle>iyzico Ödeme Ayarları</CardTitle>
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Ödeme Yöntemleri</p>
+                <p className="text-xs text-muted-foreground">POS sağlayıcılarını ve kimlik bilgilerini yönetin</p>
+              </div>
             </div>
-            <CardDescription>
-              iyzico ile yapılan ödemeler için otomatik fatura ayarları
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="iyzico_invoice_type">Fatura Tipi</Label>
-              <Input
-                id="iyzico_invoice_type"
-                value={settings.iyzico_invoice_type}
-                onChange={(e) => setSettings({ ...settings, iyzico_invoice_type: e.target.value })}
-                placeholder="Mükerrer 20/B"
-                className="bg-white border-gray-300"
-              />
-              <p className="text-xs text-muted-foreground">
-                iyzico ödemeleri için varsayılan fatura tipi
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="iyzico_payment_method">Ödeme Yöntemi</Label>
-              <Input
-                id="iyzico_payment_method"
-                value={settings.iyzico_payment_method}
-                onChange={(e) => setSettings({ ...settings, iyzico_payment_method: e.target.value })}
-                placeholder="İyzico Kredi Kartı"
-                className="bg-white border-gray-300"
-              />
-              <p className="text-xs text-muted-foreground">
-                Faturada görünecek ödeme yöntemi adı
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="iyzico_official_invoice"
-                checked={settings.iyzico_official_invoice}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, iyzico_official_invoice: checked })
-                }
-              />
-              <Label
-                htmlFor="iyzico_official_invoice"
-                className="text-sm font-normal cursor-pointer"
-              >
-                Resmi Fatura Oluştur
-              </Label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              İşaretlenirse faturalar "Resmi Fatura" olarak oluşturulur
-            </p>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.location.href = '/admin/payment-methods'}>
+              <ExternalLink className="h-3.5 w-3.5" />
+              Ayarlara Git
+            </Button>
           </CardContent>
         </Card>
 
@@ -303,7 +254,7 @@ export default function SystemSettings() {
                 <span className="text-sm text-muted-foreground">%</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Örnek: Maliyet 100₺, Kâr marjı %{settings.profit_margin_percent || 30} → Satış fiyatı: {(Math.floor(100 * (1 + (parseFloat(settings.profit_margin_percent) || 30) / 100)) + 0.99).toFixed(2)}₺ (psikolojik fiyatlandırma)
+                Örnek: Maliyet 100₺, Kâr marjı %{settings.profit_margin_percent || 30} → Satış fiyatı: {(Math.ceil(100 * (1 + (parseFloat(settings.profit_margin_percent) || 30) / 100)) - 0.01).toFixed(2)}₺ (psikolojik fiyatlandırma)
               </p>
             </div>
 
@@ -328,7 +279,7 @@ export default function SystemSettings() {
 
                     const multiplier = 1 + margin / 100
                     // Psikolojik fiyat: .99 ile biten fiyatlar
-                    const psychPrice = (raw) => Math.floor(raw) + 0.99
+                    const psychPrice = (raw) => Math.ceil(raw) - 0.01
                     let updated = 0
                     for (const pkg of packages || []) {
                       if (pkg.cost_monthly > 0) {

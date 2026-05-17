@@ -5,6 +5,7 @@ import { initiateCheckout } from '@/lib/metaPixel'
 import { capiInitiateCheckout } from '@/lib/metaCapi'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useCreateSelfInvoice, useInitializeIyzicoPayment } from '@/hooks/useInvoices'
+import { useBankAccounts } from '@/hooks/useBankAccounts'
 import { supabase } from '@/lib/supabase'
 import IyzicoPaymentDialog from '@/components/payments/IyzicoPaymentDialog'
 import LandingHeader from '@/components/landing/LandingHeader'
@@ -78,6 +79,15 @@ export default function Checkout() {
   // Havale modal
   const [bankOpen, setBankOpen] = useState(false)
   const [copiedField, setCopiedField] = useState(null)
+  const { data: bankAccounts = [] } = useBankAccounts({ onlyActive: true })
+  const [notifSent, setNotifSent] = useState(false)
+  const [notifSending, setNotifSending] = useState(false)
+
+  // QNB kart modal
+  const [qnbOpen, setQnbOpen] = useState(false)
+  const [qnbForm, setQnbForm] = useState({ pan: '', expiry: '', cvv: '', installment: '0' })
+  const [qnbInstallments, setQnbInstallments] = useState(['1'])
+  const [qnbPaying, setQnbPaying] = useState(false)
 
   // Misafir form
   const [guestForm, setGuestForm] = useState({ full_name: '', email: '', phone: '', company_name: '' })
@@ -134,10 +144,6 @@ export default function Checkout() {
   const handleGuestRegister = async () => {
     if (!guestForm.full_name || !guestForm.email || !guestForm.phone) {
       toast.error('Ad soyad, e-posta ve telefon zorunludur')
-      return false
-    }
-    if (!turnstileToken) {
-      toast.error('Lütfen güvenlik doğrulamasını tamamlayın')
       return false
     }
     setGuestLoading(true)
@@ -243,6 +249,148 @@ export default function Checkout() {
     setCopiedField(field)
     toast.success('IBAN kopyalandı')
     setTimeout(() => setCopiedField(null), 2000)
+  }
+
+  const sendPaymentNotif = async () => {
+    if (notifSent || notifSending) return
+    setNotifSending(true)
+    try {
+      const invoiceId = store.currentInvoiceId
+      const amount = store.getTotal()
+      const email = user?.email || guestForm.email || ''
+      await supabase.from('admin_notifications').insert({
+        type: 'bank_transfer',
+        title: 'Havale / EFT Bildirimi',
+        message: `${email} müşterisi ${fmt(amount)}₺ havale yaptığını bildirdi.`,
+        data: { invoice_id: invoiceId, amount, email, user_id: user?.id ?? null },
+        created_by: user?.id ?? null,
+      })
+      setNotifSent(true)
+      toast.success('Bildirim gönderildi! Ödemeniz kontrol edildikten sonra aktif edilecektir.')
+    } catch {
+      toast.error('Bildirim gönderilemedi, lütfen tekrar deneyin.')
+    } finally {
+      setNotifSending(false)
+    }
+  }
+
+  // Kart butonuna basıldığında: onay + misafir kayıt + fatura oluştur → modal aç
+  const handleOpenCardModal = async () => {
+    if (!consents.kvkk || !consents.distance_sales) {
+      toast.error('Lütfen sözleşmeleri onaylayın')
+      return
+    }
+    if (!user) {
+      const ok = await handleGuestRegister()
+      if (!ok) return
+    }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { toast.error('Oturum bulunamadı'); navigate('/login'); return }
+
+    try {
+      const items = buildInvoiceItems(store.items, store.billingPeriod)
+      const payload = { items, payment_method: 'qnb_pos' }
+      if (store.promoValidated && store.promoCode) payload.promo_code = store.promoCode
+      const invoice = await createSelfInvoice.mutateAsync(payload)
+      store.setCurrentInvoiceId(invoice.id)
+      setQnbOpen(true)
+    } catch (err) {
+      toast.error('Fatura oluşturulamadı', { description: err.message })
+    }
+  }
+
+  // Kredi kartı ödemesi — QNB dener, başarısız olursa iyzico'ya geçer
+  const handleQnbPayment = async () => {
+    if (!qnbForm.pan || !qnbForm.expiry) {
+      toast.error('Kart bilgilerini doldurun')
+      return
+    }
+    const invoiceId = store.currentInvoiceId
+    if (!invoiceId) {
+      toast.error('Fatura bulunamadı, lütfen sayfayı yenileyip tekrar deneyin')
+      setQnbOpen(false)
+      return
+    }
+    setQnbPaying(true)
+    try {
+      // QNB ile dene
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${baseUrl}/functions/v1/qnb-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          action: 'auth',
+          invoice_id: invoiceId,
+          card_pan: qnbForm.pan.replace(/\s/g, ''),
+          card_expiry: qnbForm.expiry.replace(/\D/g, ''),
+          card_cvv: qnbForm.cvv,
+          installment_count: parseInt(qnbForm.installment) || 0,
+        }),
+      })
+
+      if (!res.ok) {
+        // HTTP hatası — iyzico fallback'e geç
+        throw new Error(`QNB HTTP ${res.status}`)
+      }
+      const result = await res.json()
+
+      if (result.success) {
+        // QNB başarılı
+        setQnbOpen(false)
+        store.clearCheckout()
+        navigate('/payment-success')
+      } else {
+        // QNB başarısız → iyzico'ya yönlendir
+        setQnbOpen(false)
+        toast.info('Ödeme sayfasına yönlendiriliyorsunuz…')
+        const iyzicoResult = await initializeIyzico.mutateAsync({
+          invoice_id: invoiceId,
+          return_url: `${window.location.origin}/payment-success`,
+        })
+        setIyzicoContent(iyzicoResult.checkoutFormContent || '')
+        setIyzicoUrl(iyzicoResult.paymentPageUrl || '')
+        setIyzicoOpen(true)
+        initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+        capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+      }
+    } catch (err) {
+      // Ağ / HTTP hatası — iyzico'ya geç
+      setQnbOpen(false)
+      toast.info('Ödeme sayfasına yönlendiriliyorsunuz…')
+      try {
+        const iyzicoResult = await initializeIyzico.mutateAsync({
+          invoice_id: invoiceId,
+          return_url: `${window.location.origin}/payment-success`,
+        })
+        setIyzicoContent(iyzicoResult.checkoutFormContent || '')
+        setIyzicoUrl(iyzicoResult.paymentPageUrl || '')
+        setIyzicoOpen(true)
+        initiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+        capiInitiateCheckout({ contentIds: store.items.map(i => i.slug || i.id), numItems: store.items.length, value: total, currency: 'TRY' })
+      } catch (iyziErr) {
+        toast.error('Ödeme başlatılamadı', { description: iyziErr.message })
+      }
+    } finally {
+      setQnbPaying(false)
+    }
+  }
+
+  // QNB kart numarası formatlayıcı
+  const formatCardNumber = (val) => {
+    const clean = val.replace(/\D/g, '').slice(0, 16)
+    return clean.replace(/(.{4})/g, '$1 ').trim()
+  }
+
+  // QNB son kullanma tarihi formatlayıcı (MM/YY)
+  const formatExpiry = (val) => {
+    const clean = val.replace(/\D/g, '').slice(0, 4)
+    if (clean.length >= 3) return clean.slice(0, 2) + '/' + clean.slice(2)
+    return clean
   }
 
   // ─── Adım göstergesi ─────────────────────────────────────────────────────
@@ -493,18 +641,18 @@ export default function Checkout() {
             </div>
 
             {/* Ödeme butonları */}
-            <div className="grid sm:grid-cols-2 gap-3 pt-1">
+            <div className="flex flex-col gap-3 pt-1">
               <Button
-                onClick={handleCardPayment}
-                disabled={isPaying || guestLoading}
+                onClick={handleOpenCardModal}
+                disabled={isPaying || guestLoading || qnbPaying}
                 className="h-14 gap-3 bg-indigo-600 hover:bg-indigo-500 text-base font-semibold"
               >
-                {(isPaying || guestLoading) ? (
+                {(isPaying || guestLoading || qnbPaying) ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <CreditCard className="h-5 w-5" />
                 )}
-                Kredi Kartı ile Öde
+                Kredi / Banka Kartı ile Öde
               </Button>
 
               <Button
@@ -537,7 +685,7 @@ export default function Checkout() {
       {/* Havale modal */}
       {bankOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-5">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-5 overflow-y-auto max-h-[85vh]">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Landmark className="h-5 w-5 text-indigo-400" />
@@ -551,30 +699,75 @@ export default function Checkout() {
               Açıklama kısmına <span className="font-bold text-indigo-400">e-posta adresinizi</span> yazın.
             </p>
 
-            {[
-              { bank: 'İş Bankası', name: 'Luma Yazılım', iban: 'TR00 0000 0000 0000 0000 0000 00' },
-              { bank: 'VakıfBank', name: 'Luma Yazılım', iban: 'TR00 0000 0000 0000 0000 0000 00' },
-            ].map((acc, idx) => (
-              <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-indigo-400">{acc.bank}</p>
+            {bankAccounts.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">Banka hesabı yükleniyor...</p>
+            ) : bankAccounts.map((acc, idx) => (
+              <div key={acc.id ?? idx} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3">
+                {/* Banka adı + logo */}
+                <div className="flex items-center gap-3">
+                  {acc.bank_logo_url ? (
+                    <img
+                      src={acc.bank_logo_url}
+                      alt={acc.bank_name}
+                      className="h-8 w-auto max-w-[80px] object-contain rounded brightness-0 invert"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded bg-indigo-500/20 flex items-center justify-center">
+                      <Landmark className="h-4 w-4 text-indigo-400" />
+                    </div>
+                  )}
+                  <span className="text-sm font-semibold text-white">{acc.bank_name}</span>
+                </div>
+                {/* Hesap adı */}
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Hesap Adı</span>
-                  <span className="text-white font-medium">{acc.name}</span>
+                  <span className="text-white font-medium">{acc.account_holder}</span>
                 </div>
+                {/* IBAN + kopyala */}
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-xs text-slate-500">IBAN</p>
-                    <p className="font-mono text-sm text-white">{acc.iban}</p>
+                    <p className="font-mono text-sm text-white tracking-wide">{acc.iban}</p>
                   </div>
                   <button
                     onClick={() => copyIban(acc.iban, `iban-${idx}`)}
-                    className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors flex-shrink-0"
                   >
                     {copiedField === `iban-${idx}` ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
+                {/* Swift varsa göster */}
+                {acc.swift && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">SWIFT/BIC</span>
+                    <span className="text-white font-mono">{acc.swift}</span>
+                  </div>
+                )}
+                {/* Not varsa göster */}
+                {acc.notes && (
+                  <p className="text-xs text-slate-500 border-t border-slate-700 pt-2">{acc.notes}</p>
+                )}
               </div>
             ))}
+
+            {/* Ödeme bildirimi */}
+            <button
+              onClick={sendPaymentNotif}
+              disabled={notifSent || notifSending}
+              className={`w-full rounded-xl border py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                notifSent
+                  ? 'border-green-700 bg-green-900/30 text-green-400 cursor-default'
+                  : 'border-amber-600 bg-amber-600/10 text-amber-400 hover:bg-amber-600/20'
+              }`}
+            >
+              {notifSending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Gönderiliyor...</>
+              ) : notifSent ? (
+                <><CheckCircle2 className="h-4 w-4" /> Bildirim Gönderildi</>
+              ) : (
+                <><Landmark className="h-4 w-4" /> Ödeme Yaptım, Bildir</>
+              )}
+            </button>
 
             <Button
               className="w-full bg-indigo-600 hover:bg-indigo-500"
@@ -582,6 +775,101 @@ export default function Checkout() {
             >
               Tamam, Siparişi Tamamla
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* QNB Kart Ödeme Modalı */}
+      {qnbOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-indigo-400" />
+                Kart ile Öde
+              </h3>
+              <button onClick={() => setQnbOpen(false)} className="text-slate-500 hover:text-white">✕</button>
+            </div>
+
+            <p className="text-sm text-slate-400">
+              Ödenecek tutar: <span className="font-bold text-white">{fmt(total)}₺</span>
+            </p>
+
+            <div className="space-y-4">
+              {/* Kart Numarası */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Kart Numarası</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={19}
+                  placeholder="0000 0000 0000 0000"
+                  value={qnbForm.pan}
+                  onChange={e => setQnbForm({ ...qnbForm, pan: formatCardNumber(e.target.value) })}
+                  className="w-full rounded-xl bg-slate-800 border border-slate-600 text-white placeholder-slate-500 px-4 py-3 font-mono text-base tracking-widest focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Son Kullanma */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Son Kullanma</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    placeholder="AA/YY"
+                    value={qnbForm.expiry}
+                    onChange={e => setQnbForm({ ...qnbForm, expiry: formatExpiry(e.target.value) })}
+                    className="w-full rounded-xl bg-slate-800 border border-slate-600 text-white placeholder-slate-500 px-4 py-3 font-mono text-base focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                {/* CVV */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">CVV</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="•••"
+                    value={qnbForm.cvv}
+                    onChange={e => setQnbForm({ ...qnbForm, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    className="w-full rounded-xl bg-slate-800 border border-slate-600 text-white placeholder-slate-500 px-4 py-3 font-mono text-base focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Taksit Seçimi */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Taksit</label>
+                <select
+                  value={qnbForm.installment}
+                  onChange={e => setQnbForm({ ...qnbForm, installment: e.target.value })}
+                  className="w-full rounded-xl bg-slate-800 border border-slate-600 text-white px-4 py-3 text-sm focus:outline-none focus:border-amber-500"
+                >
+                  <option value="0">Peşin (taksitsiz)</option>
+                  <option value="2">2 Taksit</option>
+                  <option value="3">3 Taksit</option>
+                  <option value="6">6 Taksit</option>
+                  <option value="9">9 Taksit</option>
+                  <option value="12">12 Taksit</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleQnbPayment}
+              disabled={qnbPaying}
+              className="w-full rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-semibold py-3.5 flex items-center justify-center gap-2 transition-colors"
+            >
+              {qnbPaying ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> İşleniyor...</>
+              ) : (
+                <><CreditCard className="h-4 w-4" /> {fmt(total)}₺ Öde</>
+              )}
+            </button>
+
+            <p className="text-center text-xs text-slate-600">🔒 QNB PCI-DSS uyumlu güvenli ödeme</p>
           </div>
         </div>
       )}

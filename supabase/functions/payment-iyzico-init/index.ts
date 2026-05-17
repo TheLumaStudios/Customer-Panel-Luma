@@ -73,7 +73,15 @@ serve(async (req) => {
       .maybeSingle()
 
     const ownsViaProfile = invoiceCustomer?.profile_id === user.id
-    const ownsViaEmail = invoiceCustomer?.email && invoiceCustomer.email === user.email
+    const ownsViaEmail = invoiceCustomer?.email &&
+      invoiceCustomer.email.toLowerCase() === (user.email ?? '').toLowerCase()
+    // Ek kontrol: profile_id eksikse şimdi set et
+    if (invoiceCustomer && !invoiceCustomer.profile_id && ownsViaEmail) {
+      await supabaseAdmin
+        .from('customers')
+        .update({ profile_id: user.id })
+        .eq('id', invoiceCustomer.id)
+    }
     if (!invoiceCustomer || (!ownsViaProfile && !ownsViaEmail)) {
       throw new Error('Bu fatura size ait değil')
     }

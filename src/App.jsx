@@ -59,6 +59,8 @@ import Tickets from '@/pages/admin/Tickets'
 import Settings from '@/pages/admin/Settings'
 import SystemSettings from '@/pages/admin/SystemSettings'
 import BankAccounts from '@/pages/admin/BankAccounts'
+import PosSettings from '@/pages/admin/PosSettings'
+import PaymentMethods from '@/pages/admin/PaymentMethods'
 import Contracts from '@/pages/admin/Contracts'
 import Analytics from '@/pages/admin/Analytics'
 import Employees from '@/pages/admin/Employees'
@@ -188,6 +190,8 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="system-settings" element={<SystemSettings />} />
             <Route path="bank-accounts" element={<BankAccounts />} />
+            <Route path="pos-settings" element={<PosSettings />} />
+            <Route path="payment-methods" element={<PaymentMethods />} />
             <Route path="email-templates" element={<EmailTemplates />} />
             <Route path="ticket-departments" element={<TicketDepartments />} />
             <Route path="knowledge-base" element={<KnowledgeBaseAdmin />} />
