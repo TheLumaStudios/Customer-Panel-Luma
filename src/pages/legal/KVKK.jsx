@@ -112,6 +112,17 @@ export default function KVKK() {
                   <p className="text-xs text-slate-500">Adres: Altunizade Mah. İnci Çıkmazı Sok. No:3 Üsküdar/İstanbul</p>
                   <p className="text-xs text-slate-500 mt-1"><strong className="text-slate-400">Aktarılan veriler:</strong> Ad-soyad, e-posta, telefon, fatura adresi, IP adresi, kart bilgileri, ödeme tutarı</p>
                 </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-white mb-1">QNB Bank A.Ş.</h4>
+                  <p className="text-xs text-slate-500">BDDK lisanslı banka | QNB Group iştiraki | Ticari Sicil: İstanbul Ticaret Sicili</p>
+                  <p className="text-xs text-slate-500">Adres: Büyükdere Cad. No:129 Esentepe/Şişli/İstanbul</p>
+                  <p className="text-xs text-slate-500 mt-1"><strong className="text-slate-400">Aktarılan veriler:</strong> Ad-soyad, e-posta, fatura adresi, IP adresi, kart bilgileri, ödeme tutarı (POS/kredi kartı işlemleri kapsamında)</p>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-white mb-1">Türkiye İş Bankası A.Ş. & VakıfBank T.A.O.</h4>
+                  <p className="text-xs text-slate-500">BDDK lisanslı bankalar | Havale/EFT alacak hesabı sağlayıcıları</p>
+                  <p className="text-xs text-slate-500 mt-1"><strong className="text-slate-400">Aktarılan veriler:</strong> Ad-soyad, IBAN, ödeme tutarı, açıklama bilgisi (havale/EFT işlemleri kapsamında)</p>
+                </div>
               </div>
               <p className="text-sm text-slate-400 mb-4">
                 Kart bilgileri (kart numarası, son kullanma tarihi, CVV) yalnızca ilgili ödeme kuruluşunun PCI DSS uyumlu güvenli altyapısı üzerinden işlenmekte olup Luma tarafından saklanmamaktadır.
@@ -230,6 +241,9 @@ export default function KVKK() {
                   <tbody className="text-slate-400">
                     <tr className="border-b border-slate-800"><td className="py-3 px-4">Supabase (Pty Ltd)</td><td className="py-3 px-4">Veritabanı, kimlik doğrulama, dosya depolama</td><td className="py-3 px-4">ABD / AB (AWS)</td></tr>
                     <tr className="border-b border-slate-800"><td className="py-3 px-4">iyzico (iyzi Ödeme A.Ş.)</td><td className="py-3 px-4">Ödeme işleme, kart tokenizasyonu</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">QNB Bank A.Ş.</td><td className="py-3 px-4">POS / kredi kartı işlemleri</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">Türkiye İş Bankası A.Ş.</td><td className="py-3 px-4">Havale/EFT alacak hesabı</td><td className="py-3 px-4">Türkiye</td></tr>
+                    <tr className="border-b border-slate-800"><td className="py-3 px-4">VakıfBank T.A.O.</td><td className="py-3 px-4">Havale/EFT alacak hesabı</td><td className="py-3 px-4">Türkiye</td></tr>
                     <tr className="border-b border-slate-800"><td className="py-3 px-4">AkÖDE A.Ş. (Tosla)</td><td className="py-3 px-4">Ödeme işleme</td><td className="py-3 px-4">Türkiye</td></tr>
                     <tr className="border-b border-slate-800"><td className="py-3 px-4">Garanti Ödeme A.Ş. (Tami)</td><td className="py-3 px-4">Ödeme işleme</td><td className="py-3 px-4">Türkiye</td></tr>
                     <tr className="border-b border-slate-800"><td className="py-3 px-4">Cloudflare, Inc.</td><td className="py-3 px-4">DNS yönetimi, DDoS koruması, CDN</td><td className="py-3 px-4">ABD / Global</td></tr>

@@ -72,7 +72,8 @@ export default function PrivacyPolicy() {
               <h2 className="text-xl font-semibold text-white mb-3">3. Bilgilerin Paylaşımı</h2>
               <p className="mb-3">Kişisel verileriniz aşağıdaki durumlar dışında üçüncü taraflarla paylaşılmaz:</p>
               <ul className="list-disc list-inside space-y-2 text-slate-400">
-                <li><strong className="text-slate-200">Ödeme hizmet sağlayıcıları:</strong> AkÖDE (Tosla - Akbank iştiraki), Tami (Garanti BBVA iştiraki) ve iyzico. Ödeme işlemleri için ad-soyad, e-posta, telefon, fatura adresi, IP adresi ve kart bilgileri bu kuruluşların PCI DSS uyumlu güvenli altyapılarına aktarılır. Kart bilgileri Luma tarafından saklanmaz.</li>
+                <li><strong className="text-slate-200">Ödeme hizmet sağlayıcıları:</strong> AkÖDE (Tosla - Akbank iştiraki), Tami (Garanti BBVA iştiraki), iyzico ve QNB Bank A.Ş. (POS/kredi kartı işlemleri). Ödeme işlemleri için ad-soyad, e-posta, telefon, fatura adresi, IP adresi ve kart bilgileri bu kuruluşların PCI DSS uyumlu güvenli altyapılarına aktarılır. Kart bilgileri Luma tarafından saklanmaz.</li>
+                <li><strong className="text-slate-200">Havale/EFT bankaları:</strong> Türkiye İş Bankası A.Ş. ve VakıfBank T.A.O. Havale/EFT yoluyla ödeme yapılması halinde IBAN ve ödeme tutarı bu bankalar ile paylaşılır.</li>
                 <li><strong className="text-slate-200">Alan adı kayıt kuruluşları:</strong> Domain tescil işlemleri için WHOIS bilgileri</li>
                 <li><strong className="text-slate-200">BTK:</strong> 5651 sayılı Kanun kapsamında yer sağlayıcı yükümlülükleri gereği müşteri kimlik ve alan adı bilgileri</li>
                 <li><strong className="text-slate-200">Yasal merciler:</strong> Mahkeme kararı, savcılık talebi veya yasal zorunluluk halinde</li>
