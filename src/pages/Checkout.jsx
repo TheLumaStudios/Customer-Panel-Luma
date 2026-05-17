@@ -65,6 +65,11 @@ export default function Checkout() {
 
   const [step, setStep] = useState('cart')
 
+  // Sayfa açılınca ve adım değişince en üste scroll et
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [step])
+
   // iyzico
   const [iyzicoOpen, setIyzicoOpen] = useState(false)
   const [iyzicoContent, setIyzicoContent] = useState('')
@@ -503,8 +508,7 @@ export default function Checkout() {
               <Button
                 onClick={handleBankTransfer}
                 disabled={isPaying || guestLoading}
-                variant="outline"
-                className="h-14 gap-3 border-slate-700 text-slate-200 hover:bg-slate-800 text-base font-semibold"
+                className="h-14 gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-base font-semibold"
               >
                 <Landmark className="h-5 w-5" />
                 Havale / EFT
